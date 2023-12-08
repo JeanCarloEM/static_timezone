@@ -47,7 +47,7 @@ function childs(start, id) {
           String(Math.abs(Math.round((lg % 1) * decimals))).padStart(precision, '0')
         ];
 
-        let zone = find(lt, lg);
+        let zone = (find(lt, lg) + "").trim();
         let lgsignal = lg >= 0 ? "" : "-";
 
         const __dir = `${_dir}/long/${lgsignal}${lgpath[0]}`;
@@ -55,7 +55,7 @@ function childs(start, id) {
         fs.mkdirSync(__dir, { recursive: true });
 
         fs.writeFileSync(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ tz: `${zone}` }, null, 0), 'utf8');
-        fs.writeFileSync(`${__dir}/${lgpath[1]}`, `${(zone.trim())}`, 'utf8');
+        fs.writeFileSync(`${__dir}/${lgpath[1]}`, `${zone}`, 'utf8');
 
         last_items[`${ltsignal}${ltpath}`] = last_items[`${ltsignal}${ltpath}`] ? last_items[`${ltsignal}${ltpath}`] : {};
         last_items[`${ltsignal}${ltpath}`][`${lgsignal}${lgpath[0]}${lgpath[1]}`] = `${zone}`;
