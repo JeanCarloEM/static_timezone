@@ -33,7 +33,7 @@ function childs(start, id) {
   for (var lat = fromto * decimals; lat == fromto * decimals; lat += 1) {
     let lt = Math.round((lat / (1 / inc)) * decimals) / decimals;
     let ltpath = String(Math.trunc(Math.abs(lt))).padStart(precision, '0') + "/" + String(Math.abs(Math.round((lt % 1)) * decimals)).padStart(precision, '0');
-    let ltsignal = lt >= 0 ? "+" : "-";
+    let ltsignal = lt >= 0 ? "" : "-";
     let _dir = `${destPath}/lat/${ltsignal}${ltpath}`;
 
     try {
@@ -48,14 +48,14 @@ function childs(start, id) {
         ];
 
         let zone = find(lt, lg);
-        let lgsignal = lg >= 0 ? "+" : "-";
+        let lgsignal = lg >= 0 ? "" : "-";
 
         const __dir = `${_dir}/long/${lgsignal}${lgpath[0]}`;
 
         fs.mkdirSync(__dir, { recursive: true });
 
-        fs.writeFileSync(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ timezone: `${zone}` }, null, 2), 'utf8');
-        fs.writeFileSync(`${__dir}/${lgpath[1]}.text`, `${zone}`, 'utf8');
+        fs.writeFileSync(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ tz: `${zone}` }, null, 0), 'utf8');
+        fs.writeFileSync(`${__dir}/${lgpath[1]}`, `${(zone.trim())}`, 'utf8');
 
         last_items[`${ltsignal}${ltpath}`] = last_items[`${ltsignal}${ltpath}`] ? last_items[`${ltsignal}${ltpath}`] : {};
         last_items[`${ltsignal}${ltpath}`][`${lgsignal}${lgpath[0]}${lgpath[1]}`] = `${zone}`;
