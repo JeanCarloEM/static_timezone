@@ -72,7 +72,7 @@ function childs(start, id) {
     }
   }
 
-  if ((min + (segs * (start + cores))) <= max) {
+  if ((min + start + cores) <= max) {
     childs(start + cores, id);
   }
 }
