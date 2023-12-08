@@ -8,14 +8,14 @@ const { fork } = require('child_process');
 const precision = 2;
 const decimal_size = Math.pow(10, precision);
 const inc = 1 / decimal_size;
-const qtd_process = os.cpus().length / 2;
+const qtd_process = Math.ceil(os.cpus().length / 2);
 const lat_min = -90;
 const lat_max = 90;
 const long_min = -180;
 const long_max = 180;
 const lat_range = (lat_max - lat_min);
 const long_range = (long_max - long_min);
-const segs = lat_range / qtd_process;
+const segs = Math.ceil(lat_range / qtd_process);
 const qtd_longitudes = long_range * decimal_size;
 const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
@@ -24,13 +24,21 @@ const update_count = 100;
 const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
 
-var msg_from_child = {};
-
 /**
  *
  */
 function decimal_part(x) {
   return String(Math.abs(Math.round((x % 1) * decimal_size))).padStart(precision, "0");
+}
+
+/**
+ *
+ * @param {*} spath
+ */
+function write(spath, ctt) {
+  const dir = path.dirname(spath);
+  fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(`${path}`, ctt, 'ascii');
 }
 
 /**
@@ -43,7 +51,6 @@ function childs(start, id) {
   start = start ? start : 0;
   const fromto = lat_min + start;
   var last_items = {};
-  var __ctt = 0;
 
   for (var _lat = fromto; _lat <= lat_range; _lat += qtd_process) {
     if ((_lat < lat_min) || (_lat > lat_max)) {
@@ -56,8 +63,6 @@ function childs(start, id) {
       let _dir = `${destPath}/lat/${ltsignal}${ltpath}`;
 
       try {
-        fs.mkdirSync(_dir, { recursive: true });
-
         for (var lg = parseFloat(long_min); lg <= long_range; lg += inc) {
           if ((lg < long_min) || (lg > long_max)) {
             break;
@@ -74,20 +79,17 @@ function childs(start, id) {
 
           const __dir = `${_dir}/long/${lgsignal}${lgpath[0]}`;
 
-          fs.mkdirSync(__dir, { recursive: true });
-
-          fs.writeFileSync(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ tz: `${zone}` }, null, 0), 'utf8');
-          fs.writeFileSync(`${__dir}/${lgpath[1]}`, `${zone}`, 'utf8');
+          write(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+          write(`${__dir}/${lgpath[1]}.txt`, `${zone}`);
 
           last_items[`${ltsignal}${ltpath}`] = last_items[`${ltsignal}${ltpath}`] ? last_items[`${ltsignal}${ltpath}`] : {};
           last_items[`${ltsignal}${ltpath}`][`${lgsignal}${lgpath[0]}${lgpath[1]}`] = `${zone}`;
 
-          if (((++__ctt) % update_count) == 0) {
-            process.send({ id: id, lat: parseFloat(lt).toFixed(2), long: parseFloat(lg).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
-            __ctt = 0;
-            last_items = {};
-          }
+          process.send({ id: id, lat: parseFloat(lt).toFixed(2), long: parseFloat(lg).toFixed(2) });
         }
+
+        last_items = {};
+        process.send({ id: id, lat: parseFloat(lt).toFixed(2), long: parseFloat(lg).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
       } catch (e) {
         console.error(id, e);
         return;
@@ -97,15 +99,24 @@ function childs(start, id) {
 }
 
 
+
 /**
  *
  */
-function is_response_from_child(msg) {
+function is_response_from_child(msg, full) {
+  full = full === true;
+
   return (
     (typeof msg === 'object') &&
     (msg.hasOwnProperty('id')) &&
-    (msg.hasOwnProperty('items')) &&
-    (typeof msg.items === 'object')
+    (
+      (!full) ||
+      (
+        full &&
+        msg.hasOwnProperty('items') &&
+        (typeof msg.items === 'object')
+      )
+    )
   );
 }
 
@@ -158,7 +169,7 @@ function main() {
     autopadding: true,
     autopaddingChar: " ",
     emptyOnZero: true,
-    forceRedraw: true,
+    forceRedraw: false,
     format: '{index} | {bar} | {percentage}% | {lat}/{long} | {value}/{total}',
   }, cliProgress.Presets.shades_grey);
 
@@ -168,19 +179,36 @@ function main() {
 
     fork('make.js')
       .on('message', (msg) => {
-        if (!is_response_from_child(msg)) {
-          return;
-        }
+        ((progress) => {
+          if (!is_response_from_child(msg)) {
+            return;
+          }
 
-        __counter += update_count;
-        __total += update_count;
+          if (is_response_from_child(msg, false)) {
+            __counter++;
+            __total++;
 
-        makes = { ...makes, ...msg.items };
-        bar.update(__counter, { lat: String(msg.lat).toLocaleString("pt-BR").padStart(pad_adress, ' '), long: String(msg.long).toLocaleString("pt-BR").padStart(pad_adress, ' '), index: String(k).padStart(3, ' ') });
+            (((__counter % update_count) == 0) || ((__total % update_count) == 0)) && progress(msg, __counter);
+            return;
+          }
 
-        if (__counter >= (segs * qtd_longitudes)) {
-          bar.stop();
-        }
+          makes = { ...makes, ...msg.items };
+          progress(msg, __counter);
+
+          if (__counter >= (segs * qtd_longitudes)) {
+            bar.stop();
+          }
+        })((msg, val) => {
+          bar.update(
+            val,
+            {
+              lat: String(msg.lat).toLocaleString("pt-BR").padStart(pad_adress, ' '),
+              long: String(msg.long).toLocaleString("pt-BR").padStart(pad_adress, ' '),
+              index: String(k).padStart(3, ' ')
+            }
+          );
+
+        });
       })
       .send({ start: k });
   });
