@@ -14,7 +14,7 @@ That there are more than **648,000,000** files, which despite being no more than
 
 ## API
 
-`/from/gcs/2-digit/lat{LATITUDE}/long/{LONGITUDE}`
+`/from/gcs/2-digit/lat/{LATITUDE}/long/{LONGITUDE}`
 
 - `{LATITUDE}` is a number that goes from -90.00 to +90.00.
 - `{LONGITUDE}` is a number that goes from -180.00 to +180.00.
