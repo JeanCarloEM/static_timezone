@@ -169,20 +169,23 @@ function childs(start, id) {
 
           if (fs.existsSync(`${__dest}`)) {
             try {
-              let content = fs.readFileSync(`${__dest}`);
+              let content = fs.readFileSync(`${__dest}`, 'ascii').trim();
+              if (content.length > 0) {
+                if ((content + "").trim() !== zone) {
+                  console.error("ERROR", "ZONE saved invalid.\n", `'${__dest}'\n`, `'${zone}'`, " !=", `'${content}'`);
+                  process.send({ id: id, error: 2 });
+                  return;
+                }
 
-              if ((content + "").trim() !== zone) {
-                console.error("ERROR", "ZONE saved invalid.", content);
-                process.send({ id: id, error: 2 });
-                return;
+                skipthis = true;
+              } else {
+                skipthis = false;
               }
             } catch (e) {
               console.error(id, __dest, e);
               process.send({ id: id, error: 3 });
               return;
             }
-
-            skipthis = true;
           }
 
           if (!skipthis) {
@@ -222,8 +225,8 @@ function childs(start, id) {
       _step_lg_builts++;
     }
 
-    writedata(`${_dir}/finished.json`, JSON.stringify(group_items, null, 0));
-    fs.unlinkSync(`${_dir}/tmp.json`);
+    writedata(`${destPath}/finished.json`, JSON.stringify(group_items, null, 0));
+    fs.unlinkSync(`${destPath}/tmp.json`);
   }
 }
 
@@ -307,7 +310,7 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    format: '{index} | {bar} | {percentage}% | {start} => {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
+    format: '{index} | {bar} | {percentage}% / {percentage_all}% | {start} => {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
   }, cliProgress.Presets.shades_grey);
 
   (Array(qtd_process).fill('0')).forEach((e, k) => {
@@ -350,6 +353,7 @@ function main() {
           bar.update(
             val,
             {
+              percentage_all: String(((val + (msg.step * qtd_decpart_latitudes)) / (segs * qtd_decpart_latitudes)).toFixed(0)).padStart(3, " "),
               start: String(msg.start).padStart(3, " "),
               skipped: (msg.skipped ? "Skipped" : "Built").padStart(7, " "),
               step: String(msg.step).padStart(4, " "),
@@ -380,6 +384,7 @@ function main() {
     }
 
     bar_total.update(__total, {
+      percentage_all: " ".padStart(3, " "),
       start: " ".padStart(3, " "),
       skipped: ("MAIN").padStart(7, " "),
       step: " ".padStart(4, " "),
