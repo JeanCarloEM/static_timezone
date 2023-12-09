@@ -21,7 +21,7 @@ const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
 const update_count = 100;
-const destPath = path.join(__dirname, `db/gcs/${(precision)}-digit`);
+const destPath = path.join(__dirname, `db2/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
 
 /**
@@ -125,9 +125,8 @@ function childs(start, id) {
         group_items = JSON.parse(fs.readFileSync(`${_dir}/tmp.json`));
       }
 
-
       for (var lg = long_min; lg <= long_max; lg++) {
-        const ignorar = !(
+        const skipthis = !(
           (lt < saved_pos_data.lt) ||
           (
             (lt === saved_pos_data.lt) &&
@@ -141,7 +140,7 @@ function childs(start, id) {
           )
         );
 
-        if (!ignorar) {
+        if (!skipthis) {
           writedata(saved_pos_path, JSON.stringify({
             id: id,
             lt: lt,
@@ -154,7 +153,7 @@ function childs(start, id) {
         let last_items = {};
 
         for (var lg_dec = 0; lg_dec < decimal_size; lg_dec++) {
-          if (!ignorar) {
+          if (!skipthis) {
             var longitude = (parseFloat(lg) + (lg_dec / decimal_size)).toFixed(precision);;
 
             if ((longitude < long_min) || (longitude > long_max)) {
@@ -187,7 +186,7 @@ function childs(start, id) {
         }
 
         writedata(`${_dir}/tmp.json`, JSON.stringify(group_items, null, 0));
-        process.send({ step: _step, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
+        process.send({ skipped: skipthis, step: _step, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
       }
 
       _step++;
@@ -271,7 +270,7 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    format: '{index} | {bar} | {percentage}% | {lat}/{long} | steps {step}/{astep}: {value}/{total}',
+    format: '{index} | {bar} | {percentage}% | {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
   }, cliProgress.Presets.shades_grey);
 
   (Array(qtd_process).fill('0')).forEach((e, k) => {
@@ -309,15 +308,16 @@ function main() {
           bar.update(
             val,
             {
-              step: msg.step,
-              astep: (() => {
+              skipped: (msg.skipped ? "Skipped" : "Built").padStart(7, " "),
+              step: String(msg.step).padStart(4, " "),
+              astep: String((() => {
                 var count = 0;
                 for (var lt = lat_min + k; lt <= lat_max; lt += qtd_process) {
                   count++;
                 }
 
                 return count * decimal_size;
-              })(),
+              })()).padStart(4, " "),
               lat: String(msg.lat).toLocaleString("pt-BR").padStart(pad_adress, ' '),
               long: String(msg.long).toLocaleString("pt-BR").padStart(pad_adress, ' '),
               index: String(k).padStart(3, ' ')
@@ -337,6 +337,9 @@ function main() {
     }
 
     bar_total.update(__total, {
+      skipped: ("MAIN").padStart(7, " "),
+      step: " ".padStart(4, " "),
+      astep: " ".padStart(4, " "),
       seg: '  ',
       aseg: '  ',
       lat: "".padStart(pad_adress), long: "".padStart(pad_adress), index: ">>>"
