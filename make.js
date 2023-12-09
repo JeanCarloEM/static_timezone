@@ -379,8 +379,8 @@ function main() {
         return "";
       }
 
-      let p_total = String(parseInt(params.total)).toLocaleString("pt-BR");
-      let p_val = String(parseInt(params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
+      let p_total = "" + (parseInt(params.total)).toLocaleString("pt-BR");
+      let p_val = "" + (parseInt(params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
 
       const k = (getVal('k') !== "" && getVal('k') >= 0)
         ? getVal('k')
@@ -468,8 +468,8 @@ function main() {
 
                 return count * decimal_size;
               })()).padStart(3, " "),
-              lat: String(msg.lat).toLocaleString("pt-BR").padStart(pad_adress, ' '),
-              long: String(msg.long).toLocaleString("pt-BR").padStart(pad_adress, ' '),
+              lat: String(msg.lat.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
+              long: String(msg.long.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
               index: String(k).padStart(3, ' ')
             }
           );
