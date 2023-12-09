@@ -73,7 +73,7 @@ function readSavedPos(saved_pos_path, fromto) {
 
   if (fs.existsSync(saved_pos_path)) {
     try {
-      saved_pos_data__ = JSON.parse(fs.readFileSync(saved_pos_path));
+      saved_pos_data__ = JSON.parse(fs.readFileSync(saved_pos_path, 'ascii'));
     } catch (error) {
       saved_pos_data__ = false;
     }
@@ -102,6 +102,23 @@ function childs(start, id) {
   var _step_lg_builts = saved_pos_data.step;
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
+    let _dir_json = `${destPath}/lat/${lt}.json`;
+
+    let group_items;
+
+    try {
+      group_items =
+        (fs.existsSync(`${_dir_json}/tmp.json`))
+          ? JSON.parse(fs.readFileSync(`${_dir_json}/tmp.json`, 'ascii'))
+          : (
+            (fs.existsSync(`${_dir_json}/finished.json`))
+              ? JSON.parse(fs.readFileSync(`${_dir_json}/finished.json`, 'ascii'))
+              : {}
+          );
+    } catch (error) {
+      group_items = {};
+    }
+
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
       const ltsignal = lt >= 0;
       var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
@@ -112,17 +129,6 @@ function childs(start, id) {
 
       let ltpath = String(latitude).replace(/[,\.]/, '/');
       let _dir = `${destPath}/lat/${ltpath}`;
-
-      let group_items;
-
-      try {
-        group_items =
-          (fs.existsSync(`${_dir}/tmp.json`))
-            ? JSON.parse(fs.readFileSync(`${_dir}/tmp.json`))
-            : {};
-      } catch (error) {
-        group_items = {};
-      }
 
       for (var lg = long_min; lg <= long_max; lg++) {
         const lgsignal = lt >= 0;
@@ -209,7 +215,7 @@ function childs(start, id) {
           }
         }
 
-        writedata(`${_dir}/tmp.json`, JSON.stringify(group_items, null, 0));
+        writedata(`${_dir_json}/tmp.json`, JSON.stringify(group_items, null, 0));
         process.send({
           skipped: skipthis,
           step: _step_lg_builts,
@@ -225,8 +231,8 @@ function childs(start, id) {
       _step_lg_builts++;
     }
 
-    writedata(`${destPath}/finished.json`, JSON.stringify(group_items, null, 0));
-    fs.unlinkSync(`${destPath}/tmp.json`);
+    writedata(`${_dir_json}/finished.json`, JSON.stringify(group_items, null, 0));
+    fs.unlinkSync(`${_dir_json}/tmp.json`);
   }
 }
 
@@ -286,7 +292,7 @@ function main() {
   var makes = {};
 
   if (fs.existsSync(`${destPath}/full.temp.json`)) {
-    makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`));
+    makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`, 'ascii'));
   }
 
   console.log("");

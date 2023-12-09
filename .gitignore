@@ -1,5 +1,8 @@
 *.tmp.json
 *.process.json
 *.temp.json
+tmp.json
+process.json
+temp.json
 node_modules
 make.bat
