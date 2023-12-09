@@ -12,7 +12,7 @@ All files are static and can be served by a basic WEB server, or even by github 
 
 ## API
 
-`/from/gcs/2-digit/{LATITUDE}/{LONGITUDE}`
+`/from/gcs/2-digit/lat{LATITUDE}/long/{LONGITUDE}`
 
 - `{LATITUDE}` is a number that goes from -90.00 to +90.00.
 - `{LONGITUDE}` is a number that goes from -180.00 to +180.00.
@@ -21,7 +21,7 @@ All files are static and can be served by a basic WEB server, or even by github 
 
 ### Practical examples:
 
-- **Tesker in Niger**: latitude _15.067980_ and longitude _10.728149_ => _/from/gcs/2-digit/**15**/**06**/**9**/**72**/_
-- **Brazilian in Brazil**: latitude -15.831315* and longitude *-47.881165* => \_/from/gcs/2-digit/**-15**/**83**/**-47**/**88**/*
-- **New York in USA**: latitude _40.657462_ and longitude _-74.014893_ => _/from/gcs/2-digit/**40**/**65**/**-74**/**01**/_
-- **Sydiney in Australia**: latitude _-33.898917_ and longitude _151.303711_ => _/from/gcs/2-digit/**-33**/**89**/**151**/**30**/_
+- **Tesker in Niger**: latitude _15.067980_ and longitude _10.728149_ => `/from/gcs/2-digit/lat/15/06/long/9/72`
+- **Brazilian in Brazil**: latitude -15.831315* and longitude *-47.881165\* => `_/from/gcs/2-digit/lat/-15/83/long/-47/88`
+- **New York in USA**: latitude _40.657462_ and longitude _-74.014893_ => `/from/gcs/2-digit/lat/40/65/long/-74/01`
+- **Sydiney in Australia**: latitude _-33.898917_ and longitude _151.303711_ => `/from/gcs/2-digit/lat/-33/89/long/151/30`
