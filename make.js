@@ -26,13 +26,6 @@ const pad_adress = precision + 1 + 3 + 1;
 
 /**
  *
- */
-function decimal_part(x) {
-  return String(Math.abs(Math.round((x % 1) * decimal_size))).padStart(precision, "0");
-}
-
-/**
- *
  * @param {*} spath
  */
 function writedata(spath, ctt) {
@@ -106,7 +99,7 @@ function childs(start, id) {
   const saved_pos_path = `${destPath}/${id}.process.json`;
   const saved_pos_data = readSavedPos(saved_pos_path, fromto);
 
-  var _step = saved_pos_data.step;
+  var _step_lg_builts = saved_pos_data.step;
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
     if ((lt < lat_min) || (lt > lat_max)) {
@@ -119,11 +112,10 @@ function childs(start, id) {
       let ltpath = String(latitude).replace(/[,\.]/, '/');
       let _dir = `${destPath}/lat/${ltpath}`;
 
-      let group_items = {};
-
-      if (fs.existsSync(`${_dir}/tmp.json`)) {
-        group_items = JSON.parse(fs.readFileSync(`${_dir}/tmp.json`));
-      }
+      let group_items =
+        (fs.existsSync(`${_dir}/tmp.json`))
+          ? group_items = JSON.parse(fs.readFileSync(`${_dir}/tmp.json`))
+          : {};
 
       for (var lg = long_min; lg <= long_max; lg++) {
         const skipthis = !(
@@ -142,11 +134,12 @@ function childs(start, id) {
 
         if (!skipthis) {
           writedata(saved_pos_path, JSON.stringify({
-            id: id,
             lt: lt,
             lt_dec: lt_dec,
             lg: lg,
-            step: _step
+
+            step: _step_lg_builts,
+            id: id
           }));
         }
 
@@ -186,10 +179,10 @@ function childs(start, id) {
         }
 
         writedata(`${_dir}/tmp.json`, JSON.stringify(group_items, null, 0));
-        process.send({ skipped: skipthis, step: _step, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
+        process.send({ skipped: skipthis, step: _step_lg_builts, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
       }
 
-      _step++;
+      _step_lg_builts++;
     }
 
     writedata(`${_dir}/finished.json`, JSON.stringify(group_items, null, 0));
