@@ -99,12 +99,13 @@ function childs(start, id) {
   const saved_pos_path = `${destPath}/${id}.process.json`;
   const saved_pos_data = readSavedPos(saved_pos_path, fromto);
 
-  var _step_lg_builts = saved_pos_data.step;
+  var _step_lg_builts = 0;
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
     let _dir_json = `${destPath}/lat/${lt}.json`;
-
     let group_items;
+
+    _step_lg_builts = ((lt - fromto) / qtd_process) * decimal_size;
 
     try {
       group_items =
@@ -133,7 +134,7 @@ function childs(start, id) {
       for (var lg = long_min; lg <= long_max; lg++) {
         const lgsignal = lt >= 0;
 
-        let skipthis = (
+        const skipthis = (
           (lt < saved_pos_data.lt) ||
           (
             (lt === saved_pos_data.lt) &&
@@ -160,6 +161,7 @@ function childs(start, id) {
 
         let last_items = {};
         var longitude;
+        let localSkip = skipthis;
 
         for (var lg_dec = decimal_size - 1; lg_dec >= 0; lg_dec--) {
           longitude = ((lgsignal ? 1 : - 1) * (Math.abs((parseFloat(lg)) + (lg_dec / decimal_size)))).toFixed(precision);
@@ -183,9 +185,9 @@ function childs(start, id) {
                   return;
                 }
 
-                skipthis = true;
+                localSkip = true;
               } else {
-                skipthis = false;
+                localSkip = false;
               }
             } catch (e) {
               console.error(id, __dest, e);
@@ -194,7 +196,7 @@ function childs(start, id) {
             }
           }
 
-          if (!skipthis) {
+          if (!localSkip) {
             try {
               //writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
               writedata(`${__dest}`, `${zone}`);
@@ -217,7 +219,7 @@ function childs(start, id) {
 
         writedata(`${_dir_json}/tmp.json`, JSON.stringify(group_items, null, 0));
         process.send({
-          skipped: skipthis,
+          skipped: skipthis || localSkip,
           step: _step_lg_builts,
           id: id,
           mymakes: decimal_size,
