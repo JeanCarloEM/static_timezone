@@ -14,5 +14,8 @@
     "fs": "^0.0.1-security",
     "geo-tz": "^7.0.7",
     "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "ansi-colors": "^4.1.3"
   }
 }

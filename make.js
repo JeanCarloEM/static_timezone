@@ -4,6 +4,7 @@ const path = require('path');
 const cliProgress = require('cli-progress');
 const os = require('os');
 const { fork } = require('child_process');
+const colors = require('ansi-colors');
 
 const precision = 2;
 const decimal_size = Math.pow(10, precision);
@@ -23,6 +24,7 @@ const qtd_per_process = segs * qtd_decpart_latitudes;
 const update_count = 100;
 const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
+const isFreezeSeconds = 3;
 
 /**
  *
@@ -105,8 +107,6 @@ function childs(start, id) {
     let _dir_json = `${destPath}/lat/${lt}.json`;
     let group_items;
 
-    _step_lg_builts = ((lt - fromto) / qtd_process) * decimal_size;
-
     try {
       group_items =
         (fs.existsSync(`${_dir_json}/tmp.json`))
@@ -121,6 +121,8 @@ function childs(start, id) {
     }
 
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
+      _step_lg_builts = ((lt - fromto) / qtd_process) * lt_dec;
+
       const ltsignal = lt >= 0;
       var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
 
@@ -229,8 +231,6 @@ function childs(start, id) {
           items: JSON.parse(JSON.stringify(last_items))
         });
       }
-
-      _step_lg_builts++;
     }
 
     writedata(`${_dir_json}/finished.json`, JSON.stringify(group_items, null, 0));
@@ -285,6 +285,21 @@ function terminate() {
   process.exit();
 }
 
+/**
+ *
+ * @param {*} s
+ * @returns
+ */
+function secondsFormated(s) {
+  const d = Math.floor(s / 86400);
+  s = s % 86400;
+  const h = Math.floor(s / 3600);
+  s = s % 3600;
+  const m = Math.round(s / 60);
+  s = s % 60;
+
+  return `${d}, ${(String(h).padStart(2, "0"))}:${(String(m).padStart(2, "0"))}:${(String(s).padStart(2, "0"))}`;
+}
 
 /**
  *
@@ -292,6 +307,8 @@ function terminate() {
 function main() {
   var __total = 0;
   var makes = {};
+  var isStopedSeconds_bars = (Array(qtd_process + 1)).fill(0);
+  var progressbars = (Array(qtd_process)).fill(0);
 
   if (fs.existsSync(`${destPath}/full.temp.json`)) {
     makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`, 'ascii'));
@@ -318,12 +335,81 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    format: '{index} | {bar} | {percentage}% / {percentage_all}% | {start} => {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
+    barsize: 25,
+    /*
+    parametros:
+ {
+  progress: 0.002777777777777778,
+  eta: 115,
+  startTime: 1702155963656,
+  stopTime: null,
+  total: 36000,
+  value: 100,
+  maxWidth: 134
+} {
+  k: 39,
+  percentage_all: '  0',
+  start: '-51',
+  skipped: 'Skipped',
+  step: '   0',
+  astep: ' 400',
+  lat: ' -51.99',
+  long: '-180.00',
+  index: ' 39'
+}
+*/
+    format: (options, params, values) => {
+      function getVal(x) {
+        if (values.hasOwnProperty(x) && (typeof values[x] !== "undefined")) {
+          return values[x];
+        }
+
+        return "";
+      }
+
+      //console.log("parametros:\n", params, values);
+      let p_total = String(parseInt(params.total)).toLocaleString("pt-BR");
+      let p_val = String(parseInt(params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
+      // bar grows dynamically by current progress - no whitespaces are added
+      let bar = options.barCompleteString.substr(0, Math.round(params.progress * options.barsize)).padEnd(options.barsize, ' ');
+
+      // end value reached ?
+      // change color to green when finished
+      const k = (getVal('k') !== "" && getVal('k') >= 0)
+        ? getVal('k')
+        : isStopedSeconds_bars.length - 1;
+      const isMain = (k == (isStopedSeconds_bars.length - 1));
+
+      if (!isMain) {
+        bar = bar.replace(/[^\s]/g, "■");
+      }
+
+      bar = bar.replace(/[ ]/g, "-");
+
+      const pbar = (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.red(bar) : (isMain ? colors.greenBright : colors.grey)(bar);
+
+      let lapse = "0, 00:00:00";
+      let remaining = lapse;
+
+      if (isMain) {
+        let runtime = Date.now() - params.startTime;
+        lapse = secondsFormated(Math.floor(runtime / 1000));
+        remaining = secondsFormated(Math.floor((runtime / params.value) * (params.total - params.value)));
+      }
+
+      return `${getVal('index')}: ${pbar} | ` + (
+        isMain
+          ? `${String(((params.progress) * 100).toFixed(4)).padStart(11, " ")}% | T: ${(String(lapse).padStart(12, " "))}, R: ${(String(remaining).padStart(12, " "))} | ${p_val}/${p_total}`
+          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${getVal('percentage_all')}% | ${getVal('start')} => ${getVal('lat')}/${getVal('long')}, ${getVal('skipped')} | step ${getVal('step')}/${getVal('astep')}: ${p_val}/${p_total}`
+      );
+    }
+
   }, cliProgress.Presets.shades_grey);
 
   (Array(qtd_process).fill('0')).forEach((e, k) => {
     var __counter = 0;
     const bar = multibar.create(qtd_longitudes, 0);
+    progressbars[k] = bar;
 
     fork('make.js')
       .on('message', (msg) => {
@@ -336,6 +422,8 @@ function main() {
             console.error("Exited with code:", msg.error);
             return terminate();
           }
+
+          isStopedSeconds_bars[k] = 0;
 
           if (is_response_from_child(msg, true)) {
             __counter += msg.mymakes;
@@ -361,7 +449,8 @@ function main() {
           bar.update(
             val,
             {
-              percentage_all: String(((val + (msg.step * qtd_decpart_latitudes)) / (segs * qtd_decpart_latitudes)).toFixed(0)).padStart(3, " "),
+              k: k,
+              percentage_all: String(((val + (msg.step * qtd_decpart_latitudes)) / (segs * qtd_decpart_latitudes)).toFixed(2)).padStart(5, " "),
               start: String(msg.start).padStart(3, " "),
               skipped: (msg.skipped ? "Skipped" : "Built").padStart(7, " "),
               step: String(msg.step).padStart(4, " "),
@@ -392,7 +481,6 @@ function main() {
     }
 
     bar_total.update(__total, {
-      percentage_all: " ".padStart(3, " "),
       start: " ".padStart(3, " "),
       skipped: ("MAIN").padStart(7, " "),
       step: " ".padStart(4, " "),
@@ -408,8 +496,19 @@ function main() {
       writedata(`${destPath}/full.json`, JSON.stringify(makes, null, 0));
       fs.unlinkSync(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
+      return;
     }
 
+    isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = 0;
+
+    for (var k = 0; k < progressbars.length; k++) {
+      isStopedSeconds_bars[k]++;
+
+      if (isStopedSeconds_bars[k] > isFreezeSeconds) {
+        isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = isFreezeSeconds + 1;
+        progressbars[k].update(null);
+      }
+    }
   }, 1000);
 }
 
