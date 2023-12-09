@@ -8,7 +8,9 @@ Truncating the original 6 digits to just 2 digits represents a negligible loss o
 
 All files are static and can be served by a basic WEB server, or even by github pages.
 
-**Note** however, that there are more than **648,000,000** files, which despite being no more than 48 bytes (which would give a maximum of **31GB**), in reality occupy more than **333GB** of disk space with the exFat file system of 512 bytes cluster or **2.7TB** for partition with a 4K cluster.
+#### ATTENTION! Small but takes up a lot of disk space
+
+That there are more than **648,000,000** files, which despite being no more than 48 bytes (which would give a maximum of **31GB**), in reality occupy more than **333GB** of disk space with the exFat file system of 512 bytes cluster or **2.7TB** for partition with a 4K cluster.
 
 ## API
 
@@ -22,6 +24,6 @@ All files are static and can be served by a basic WEB server, or even by github 
 ### Practical examples:
 
 - **Tesker in Niger**: latitude _15.067980_ and longitude _10.728149_ => `/from/gcs/2-digit/lat/15/06/long/9/72`
-- **Brazilian in Brazil**: latitude -15.831315* and longitude *-47.881165\* => `_/from/gcs/2-digit/lat/-15/83/long/-47/88`
+- **Brazilian in Brazil**: latitude -15.831315* and longitude \*-47.881165\* => `*/from/gcs/2-digit/lat/-15/83/long/-47/88`
 - **New York in USA**: latitude _40.657462_ and longitude _-74.014893_ => `/from/gcs/2-digit/lat/40/65/long/-74/01`
 - **Sydiney in Australia**: latitude _-33.898917_ and longitude _151.303711_ => `/from/gcs/2-digit/lat/-33/89/long/151/30`
