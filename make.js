@@ -21,7 +21,7 @@ const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
 const update_count = 100;
-const destPath = path.join(__dirname, `db2/gcs/${(precision)}-digit`);
+const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
 
 /**
@@ -112,13 +112,19 @@ function childs(start, id) {
       let ltpath = String(latitude).replace(/[,\.]/, '/');
       let _dir = `${destPath}/lat/${ltpath}`;
 
-      let group_items =
-        (fs.existsSync(`${_dir}/tmp.json`))
-          ? group_items = JSON.parse(fs.readFileSync(`${_dir}/tmp.json`))
-          : {};
+      let group_items;
+
+      try {
+        group_items =
+          (fs.existsSync(`${_dir}/tmp.json`))
+            ? JSON.parse(fs.readFileSync(`${_dir}/tmp.json`))
+            : {};
+      } catch (error) {
+        group_items = {};
+      }
 
       for (var lg = long_min; lg <= long_max; lg++) {
-        const skipthis = !(
+        const skipthis = (
           (lt < saved_pos_data.lt) ||
           (
             (lt === saved_pos_data.lt) &&
@@ -144,14 +150,16 @@ function childs(start, id) {
         }
 
         let last_items = {};
+        var longitude;
 
         for (var lg_dec = 0; lg_dec < decimal_size; lg_dec++) {
-          if (!skipthis) {
-            var longitude = (parseFloat(lg) + (lg_dec / decimal_size)).toFixed(precision);;
+          longitude = (parseFloat(lg) + (lg_dec / decimal_size)).toFixed(precision);;
 
-            if ((longitude < long_min) || (longitude > long_max)) {
-              break;
-            }
+          if ((longitude < long_min) || (longitude > long_max)) {
+            break;
+          }
+
+          if (!skipthis) {
 
             let lgpath = String(longitude).replace(/[,\.]/, '/');
             let __dest = `${_dir}/long/${lgpath}`;
@@ -179,7 +187,16 @@ function childs(start, id) {
         }
 
         writedata(`${_dir}/tmp.json`, JSON.stringify(group_items, null, 0));
-        process.send({ skipped: skipthis, step: _step_lg_builts, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
+        process.send({
+          skipped: skipthis,
+          step: _step_lg_builts,
+          id: id,
+          mymakes: decimal_size,
+          lat: parseFloat(latitude).toFixed(2),
+          long: parseFloat(longitude).toFixed(2),
+          start: fromto,
+          items: JSON.parse(JSON.stringify(last_items))
+        });
       }
 
       _step_lg_builts++;
