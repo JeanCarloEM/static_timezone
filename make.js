@@ -102,12 +102,13 @@ function childs(start, id) {
   var _step_lg_builts = saved_pos_data.step;
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
-    if ((lt < lat_min) || (lt > lat_max)) {
-      return;
-    }
+    for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
+      const ltsignal = lt >= 0;
+      var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
 
-    for (var lt_dec = 0; lt_dec < decimal_size; lt_dec++) {
-      var latitude = (parseFloat(lt) + (lt_dec / decimal_size)).toFixed(precision);
+      if ((latitude < lat_min) || (latitude > lat_max)) {
+        continue;
+      }
 
       let ltpath = String(latitude).replace(/[,\.]/, '/');
       let _dir = `${destPath}/lat/${ltpath}`;
@@ -124,7 +125,9 @@ function childs(start, id) {
       }
 
       for (var lg = long_min; lg <= long_max; lg++) {
-        const skipthis = (
+        const lgsignal = lt >= 0;
+
+        let skipthis = (
           (lt < saved_pos_data.lt) ||
           (
             (lt === saved_pos_data.lt) &&
@@ -152,26 +155,43 @@ function childs(start, id) {
         let last_items = {};
         var longitude;
 
-        for (var lg_dec = 0; lg_dec < decimal_size; lg_dec++) {
-          longitude = (parseFloat(lg) + (lg_dec / decimal_size)).toFixed(precision);;
+        for (var lg_dec = decimal_size - 1; lg_dec >= 0; lg_dec--) {
+          longitude = ((lgsignal ? 1 : - 1) * (Math.abs((parseFloat(lg)) + (lg_dec / decimal_size)))).toFixed(precision);
 
           if ((longitude < long_min) || (longitude > long_max)) {
-            break;
+            continue;
+          }
+
+          let lgpath = String(longitude).replace(/[,\.]/, '/');
+          let __dest = `${_dir}/long/${lgpath}`;
+
+          let zone = (find(latitude, longitude) + "").trim();
+
+          if (fs.existsSync(`${__dest}`)) {
+            try {
+              let content = fs.readFileSync(`${__dest}`);
+
+              if ((content + "").trim() !== zone) {
+                console.error("ERROR", "ZONE saved invalid.", content);
+                process.send({ id: id, error: 2 });
+                return;
+              }
+            } catch (e) {
+              console.error(id, __dest, e);
+              process.send({ id: id, error: 3 });
+              return;
+            }
+
+            skipthis = true;
           }
 
           if (!skipthis) {
-
-            let lgpath = String(longitude).replace(/[,\.]/, '/');
-            let __dest = `${_dir}/long/${lgpath}`;
-
-            let zone = (find(latitude, longitude) + "").trim();
-
             try {
-
               //writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
               writedata(`${__dest}`, `${zone}`);
             } catch (e) {
-              console.error(id, e);
+              console.error("ERROR", "writedata(__dest)", id, e);
+              process.send({ id: id, error: 1 });
               return;
             }
 
@@ -247,6 +267,13 @@ process.on('message', (msg) => {
   childs(msg.start, msg.start);
 });
 
+/**
+ *
+ */
+function terminate() {
+  process.exit();
+}
+
 
 /**
  *
@@ -280,7 +307,7 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    format: '{index} | {bar} | {percentage}% | {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
+    format: '{index} | {bar} | {percentage}% | {start} => {lat}/{long}, {skipped} | step {step}/{astep}: {value}/{total}',
   }, cliProgress.Presets.shades_grey);
 
   (Array(qtd_process).fill('0')).forEach((e, k) => {
@@ -292,6 +319,11 @@ function main() {
         ((progress) => {
           if (!is_response_from_child(msg, false)) {
             return;
+          }
+
+          if (msg.hasOwnProperty("error")) {
+            console.error("Exited with code:", msg.error);
+            return terminate();
           }
 
           if (is_response_from_child(msg, true)) {
@@ -318,6 +350,7 @@ function main() {
           bar.update(
             val,
             {
+              start: String(msg.start).padStart(3, " "),
               skipped: (msg.skipped ? "Skipped" : "Built").padStart(7, " "),
               step: String(msg.step).padStart(4, " "),
               astep: String((() => {
@@ -347,6 +380,7 @@ function main() {
     }
 
     bar_total.update(__total, {
+      start: " ".padStart(3, " "),
       skipped: ("MAIN").padStart(7, " "),
       step: " ".padStart(4, " "),
       astep: " ".padStart(4, " "),
