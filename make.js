@@ -8,7 +8,7 @@ const { fork } = require('child_process');
 const precision = 2;
 const decimal_size = Math.pow(10, precision);
 const inc = 1 / decimal_size;
-const qtd_process = Math.ceil(os.cpus().length / 2);
+const qtd_process = Math.ceil(os.cpus().length);
 const lat_min = -90;
 const lat_max = 90;
 const long_min = -180;
@@ -21,7 +21,7 @@ const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
 const update_count = 100;
-const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
+const destPath = path.join(__dirname, `db/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
 
 /**
@@ -35,10 +35,63 @@ function decimal_part(x) {
  *
  * @param {*} spath
  */
-function write(spath, ctt) {
+function writedata(spath, ctt) {
   const dir = path.dirname(spath);
-  fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(`${path}`, ctt, 'ascii');
+  !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(`${spath}`, ctt, 'ascii');
+}
+
+/**
+ * Deep merge two objects.
+ * @param target
+ * @param ...sources
+ * https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
+ */
+function mergeDeep(target, ...sources) {
+  if (!sources.length) return target;
+  const source = sources.shift();
+
+  function isObject(x) {
+    return typeof x === "object";
+  }
+
+  if (isObject(target) && isObject(source)) {
+    for (const key in source) {
+      if (isObject(source[key])) {
+        if (!target[key]) Object.assign(target, { [key]: {} });
+        mergeDeep(target[key], source[key]);
+      } else {
+        Object.assign(target, { [key]: source[key] });
+      }
+    }
+  }
+
+  return mergeDeep(target, ...sources);
+}
+
+/**
+ *
+ * @param {*} saved_pos_path
+ * @param {*} fromto
+ * @returns
+ */
+function readSavedPos(saved_pos_path, fromto) {
+  var saved_pos_data__ = false;
+
+  if (fs.existsSync(saved_pos_path)) {
+    try {
+      saved_pos_data__ = JSON.parse(fs.readFileSync(saved_pos_path));
+    } catch (error) {
+      saved_pos_data__ = false;
+    }
+  }
+
+  return saved_pos_data__ ? saved_pos_data__ : {
+    lt: fromto,
+    lt_dec: 0,
+    lg: long_min,
+    step: 1
+  };
 }
 
 /**
@@ -50,51 +103,98 @@ function write(spath, ctt) {
 function childs(start, id) {
   start = start ? start : 0;
   const fromto = lat_min + start;
-  var last_items = {};
+  const saved_pos_path = `${destPath}/${id}.process.json`;
+  const saved_pos_data = readSavedPos(saved_pos_path, fromto);
 
-  for (var _lat = fromto; _lat <= lat_range; _lat += qtd_process) {
-    if ((_lat < lat_min) || (_lat > lat_max)) {
+  var _step = saved_pos_data.step;
+
+  for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
+    if ((lt < lat_min) || (lt > lat_max)) {
       return;
     }
 
-    for (var lt = parseFloat(_lat); lt < (_lat + 1); lt += inc) {
-      let ltpath = String(Math.trunc(Math.abs(lt))) + "/" + decimal_part(lt);
-      let ltsignal = lt >= 0 ? "" : "-";
-      let _dir = `${destPath}/lat/${ltsignal}${ltpath}`;
+    for (var lt_dec = 0; lt_dec < decimal_size; lt_dec++) {
+      var latitude = (parseFloat(lt) + (lt_dec / decimal_size)).toFixed(precision);
 
-      try {
-        for (var lg = parseFloat(long_min); lg <= long_range; lg += inc) {
-          if ((lg < long_min) || (lg > long_max)) {
-            break;
-          }
+      let ltpath = String(latitude).replace(/[,\.]/, '/');
+      let _dir = `${destPath}/lat/${ltpath}`;
 
-          let zone = (find(lt, lg) + "").trim();
+      let group_items = {};
 
-          let lgpath = [
-            String(Math.abs(Math.trunc(lg))),
-            decimal_part(lg)
-          ];
+      if (fs.existsSync(`${_dir}/tmp.json`)) {
+        group_items = JSON.parse(fs.readFileSync(`${_dir}/tmp.json`));
+      }
 
-          let lgsignal = lg >= 0 ? "" : "-";
 
-          const __dir = `${_dir}/long/${lgsignal}${lgpath[0]}`;
+      for (var lg = long_min; lg <= long_max; lg++) {
+        const ignorar = !(
+          (lt < saved_pos_data.lt) ||
+          (
+            (lt === saved_pos_data.lt) &&
+            (
+              (lt_dec < saved_pos_data.lt_dec) ||
+              (
+                (lt_dec == saved_pos_data.lt_dec) &&
+                (lg < saved_pos_data.lg)
+              )
+            )
+          )
+        );
 
-          write(`${__dir}/${lgpath[1]}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
-          write(`${__dir}/${lgpath[1]}.txt`, `${zone}`);
-
-          last_items[`${ltsignal}${ltpath}`] = last_items[`${ltsignal}${ltpath}`] ? last_items[`${ltsignal}${ltpath}`] : {};
-          last_items[`${ltsignal}${ltpath}`][`${lgsignal}${lgpath[0]}${lgpath[1]}`] = `${zone}`;
-
-          process.send({ id: id, lat: parseFloat(lt).toFixed(2), long: parseFloat(lg).toFixed(2) });
+        if (!ignorar) {
+          writedata(saved_pos_path, JSON.stringify({
+            id: id,
+            lt: lt,
+            lt_dec: lt_dec,
+            lg: lg,
+            step: _step
+          }));
         }
 
-        last_items = {};
-        process.send({ id: id, lat: parseFloat(lt).toFixed(2), long: parseFloat(lg).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
-      } catch (e) {
-        console.error(id, e);
-        return;
+        let last_items = {};
+
+        for (var lg_dec = 0; lg_dec < decimal_size; lg_dec++) {
+          if (!ignorar) {
+            var longitude = (parseFloat(lg) + (lg_dec / decimal_size)).toFixed(precision);;
+
+            if ((longitude < long_min) || (longitude > long_max)) {
+              break;
+            }
+
+            let lgpath = String(longitude).replace(/[,\.]/, '/');
+            let __dest = `${_dir}/long/${lgpath}`;
+
+            let zone = (find(latitude, longitude) + "").trim();
+
+            try {
+
+              //writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+              writedata(`${__dest}`, `${zone}`);
+            } catch (e) {
+              console.error(id, e);
+              return;
+            }
+
+            ltpath = ltpath.replace(/[\/]/, ',');
+            lgpath = lgpath.replace(/[\/]/, ',');
+
+            last_items[`${ltpath}`] = last_items[`${ltpath}`] ? last_items[`${ltpath}`] : {};
+            last_items[`${ltpath}`][`${lgpath}`] = `${zone}`;
+
+            group_items[`${ltpath}`] = last_items[`${ltpath}`] ? last_items[`${ltpath}`] : {};
+            group_items[`${ltpath}`][`${lgpath}`] = `${zone}`;
+          }
+        }
+
+        writedata(`${_dir}/tmp.json`, JSON.stringify(group_items, null, 0));
+        process.send({ step: _step, id: id, mymakes: decimal_size, lat: parseFloat(latitude).toFixed(2), long: parseFloat(longitude).toFixed(2), start: fromto, items: JSON.parse(JSON.stringify(last_items)) });
       }
+
+      _step++;
     }
+
+    writedata(`${_dir}/finished.json`, JSON.stringify(group_items, null, 0));
+    fs.unlinkSync(`${_dir}/tmp.json`);
   }
 }
 
@@ -104,19 +204,20 @@ function childs(start, id) {
  *
  */
 function is_response_from_child(msg, full) {
-  full = full === true;
+  full = full === true ? true : false;
 
   return (
-    (typeof msg === 'object') &&
-    (msg.hasOwnProperty('id')) &&
     (
-      (!full) ||
-      (
-        full &&
-        msg.hasOwnProperty('items') &&
-        (typeof msg.items === 'object')
-      )
+      (typeof msg !== 'object') ||
+      (!msg.hasOwnProperty('id'))
     )
+      ? false
+      : (!full)
+        ? 1
+        : (
+          msg.hasOwnProperty('items') &&
+          (typeof msg.items === 'object')
+        )
   );
 }
 
@@ -145,9 +246,9 @@ function main() {
   var __total = 0;
   var makes = {};
 
-  console.log(qtd_longitudes.toLocaleString("pt-BR"));
-  console.log(qtd_decpart_latitudes.toLocaleString("pt-BR"));
-  console.log(qtd_all.toLocaleString("pt-BR"));
+  if (fs.existsSync(`${destPath}/full.temp.json`)) {
+    makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`));
+  }
 
   console.log("");
   console.log("Inicializando.");
@@ -170,44 +271,58 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    format: '{index} | {bar} | {percentage}% | {lat}/{long} | {value}/{total}',
+    format: '{index} | {bar} | {percentage}% | {lat}/{long} | steps {step}/{astep}: {value}/{total}',
   }, cliProgress.Presets.shades_grey);
 
   (Array(qtd_process).fill('0')).forEach((e, k) => {
     var __counter = 0;
-    const bar = multibar.create(segs * qtd_decpart_latitudes, 0);
+    const bar = multibar.create(qtd_longitudes, 0);
 
     fork('make.js')
       .on('message', (msg) => {
         ((progress) => {
-          if (!is_response_from_child(msg)) {
+          if (!is_response_from_child(msg, false)) {
             return;
           }
 
-          if (is_response_from_child(msg, false)) {
-            __counter++;
-            __total++;
+          if (is_response_from_child(msg, true)) {
+            __counter += msg.mymakes;
 
-            (((__counter % update_count) == 0) || ((__total % update_count) == 0)) && progress(msg, __counter);
-            return;
+            if ((__counter % qtd_longitudes) === 0) {
+              __counter = 0;
+            }
+
+            __total += msg.mymakes;
           }
 
-          makes = { ...makes, ...msg.items };
+          makes = mergeDeep(makes, msg.items);
           progress(msg, __counter);
 
-          if (__counter >= (segs * qtd_longitudes)) {
+          if ((__total % qtd_longitudes) == 0) {
+            writedata(`${destPath}/full.temp.json`, JSON.stringify(makes, null, 2));
+          }
+
+          if (__counter >= (segs * qtd_decpart_latitudes)) {
             bar.stop();
           }
         })((msg, val) => {
           bar.update(
             val,
             {
+              step: msg.step,
+              astep: (() => {
+                var count = 0;
+                for (var lt = lat_min + k; lt <= lat_max; lt += qtd_process) {
+                  count++;
+                }
+
+                return count * decimal_size;
+              })(),
               lat: String(msg.lat).toLocaleString("pt-BR").padStart(pad_adress, ' '),
               long: String(msg.long).toLocaleString("pt-BR").padStart(pad_adress, ' '),
               index: String(k).padStart(3, ' ')
             }
           );
-
         });
       })
       .send({ start: k });
@@ -221,12 +336,17 @@ function main() {
       bar_total = multibar.create(qtd_all, 0);
     }
 
-    bar_total.update(__total, { lat: "".padStart(pad_adress), long: "".padStart(pad_adress), index: ">>>" });
+    bar_total.update(__total, {
+      seg: '  ',
+      aseg: '  ',
+      lat: "".padStart(pad_adress), long: "".padStart(pad_adress), index: ">>>"
+    });
 
     if (__total >= qtd_all) {
       bar_total.stop();
       console.log("");
-      fs.writeFileSync(`${destPath}/main.json`, JSON.stringify(makes, null, 2), 'utf8');
+      writedata(`${destPath}/full.json`, JSON.stringify(makes, null, 0));
+      fs.unlinkSync(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
     }
 
