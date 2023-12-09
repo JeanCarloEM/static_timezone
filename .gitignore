@@ -1,4 +1,5 @@
+*.tmp.json
+*.process.json
+*.temp.json
 node_modules
-from/
-data/
 make.bat
