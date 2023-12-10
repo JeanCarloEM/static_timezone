@@ -408,7 +408,7 @@ function main() {
         lapse = secondsFormated(Math.floor(runtime / 1000));
         remaining_calcs.push((Math.round((runtime / 1000 / params.value) * (params.total - params.value))));
 
-        if (remaining_calcs.length > (qtd_process * 7)) {
+        while (remaining_calcs.length > (qtd_process * 7)) {
           remaining_calcs.shift();
         }
 
