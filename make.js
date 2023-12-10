@@ -24,7 +24,7 @@ const qtd_per_process = segs * qtd_decpart_latitudes;
 const update_count = 100;
 const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
-const isFreezeSeconds = 3;
+const isFreezeSeconds = 20;
 
 /**
  *
@@ -327,6 +327,7 @@ function main() {
   console.log("QTD total.............: " + qtd_all.toLocaleString("pt-BR"));
   console.log("Progress update on....: " + update_count);
   console.log("");
+  let remaining_calcs = [];
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -335,7 +336,7 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: false,
-    barsize: 20,
+    barsize: 25,
     /*
       parametros:
       {
@@ -369,7 +370,7 @@ function main() {
 
       function newBar(isMain, k, percent, size, ok, unok) {
         ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
-        unok = (typeof unok === 'string' && unok.length === 1) ? unok : ' ';
+        unok = (typeof unok === 'string' && unok.length === 1) ? unok : isMain ? '═' : '─';
         const bar = ok.substr(0, Math.round(percent * size)).padEnd(size, unok);
 
         return (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright(bar) : (isMain ? colors.greenBright : colors.grey)(bar);
@@ -388,26 +389,44 @@ function main() {
 
       const isMain = (k === (isStopedSeconds_bars.length - 1));
 
-      const main_p_size = (options.barsize + (isMain ? 16 : 1));
+      const main_p_size = (options.barsize + (isMain ? 17 : 1));
       const step_p_size = Math.round(options.barsize / 2);
 
-      const pbar = newBar(isMain, k, params.progress, main_p_size, isMain ? "" : "■", '-');
-      const pbar2 = isMain ? "" : newBar(isMain, k, parseFloat(values.step.trim()) / parseFloat(values.astep.trim()), step_p_size, "■", '-');
+      const pbar = newBar(isMain, k, params.progress, main_p_size, isMain ? "" : "■");
+      const stepbar = isMain ? "" : newBar(isMain, k, parseFloat(values.step.trim()) / parseFloat(values.astep.trim()), step_p_size, "■");
 
       let lapse = "0, 00:00:00";
       let remaining = lapse;
+      let process_p = 0;
 
       if (isMain) {
         let runtime = Date.now() - params.startTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
-        remaining = secondsFormated(Math.floor((runtime / params.value) * (params.total - params.value)));
+        remaining_calcs.push((Math.round((runtime / 1000 / params.value) * (params.total - params.value))));
+
+        if (remaining_calcs.length > 100) {
+          remaining_calcs.shift();
+        }
+
+        remaining = 0;
+        for (let i = 0; i < remaining_calcs.length; i++) {
+          remaining += remaining_calcs[i];
+        }
+
+        remaining = secondsFormated(Math.round(remaining / remaining_calcs.length));
+      } else {
+        const makestep = (parseInt(getVal('step')) * params.total) + params.value;
+        const stepmax = parseInt(getVal('astep')) * params.total;
+        process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
       }
 
-      return (isMain ? "\n" : "") + `${getVal('index')}: ${pbar} | ` + (
+      let rr = `${getVal('index')}: ├${pbar}┤  ` + (
         isMain
-          ? `${String(((params.progress) * 100).toFixed(4)).padStart(11, " ")}% | T: ${(String(lapse).padStart(12, " "))}, R: ${(String(remaining).padStart(12, " "))} | ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${getVal('percentage_all')}% | ${getVal('start')} => ${getVal('lat')}/${getVal('long')}, ${getVal('skipped')} | step: <${pbar2}> ${getVal('step')}/${getVal('astep')}: ${p_val}/${p_total}`
-      ) + (isMain ? "\n" : "");
+          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ T: ${(String(lapse).padStart(12, " "))} | R: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
+          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ step: ├${stepbar}┤ ${getVal('step')}/${getVal('astep')} of ${p_val}/${p_total}`
+      );
+
+      return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
     }
 
   }, cliProgress.Presets.shades_grey);
@@ -456,9 +475,8 @@ function main() {
             val,
             {
               k: k,
-              percentage_all: String(((val + (msg.step * qtd_decpart_latitudes)) / (segs * qtd_decpart_latitudes)).toFixed(2)).padStart(5, " "),
               start: String(msg.start).padStart(3, " "),
-              skipped: (msg.skipped ? "Skipped" : "Built").padStart(7, " "),
+              skipped: (msg.skipped ? "SKIPPED" : "Built").padStart(7, " "),
               step: String(msg.step).padStart(3, " "),
               astep: String((() => {
                 var count = 0;
