@@ -223,6 +223,8 @@ function childs(start, id) {
         process.send({
           skipped: skipthis || localSkip,
           step: _step_lg_builts,
+          astep: Math.round((lat_max - fromto) / qtd_process) * decimal_size,
+          segs: (lat_max - fromto) / qtd_process,
           id: id,
           mymakes: decimal_size,
           lat: parseFloat(latitude).toFixed(2),
@@ -309,6 +311,8 @@ function main() {
   var makes = {};
   var isStopedSeconds_bars = (Array(qtd_process + 1)).fill(0);
   var progressbars = (Array(qtd_process)).fill(0);
+  var processStarted = (Array(qtd_process)).fill(false);
+  var totalPerProcess = [];
 
   if (fs.existsSync(`${destPath}/full.temp.json`)) {
     makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`, 'ascii'));
@@ -317,15 +321,15 @@ function main() {
   console.log("");
   console.log("Inicializando.");
   console.log("");
-  console.log("Precisão..............: " + precision);
-  console.log("Incrementos...........: " + inc);
-  console.log("Processos.............: " + qtd_process);
-  console.log("Latitudes por processo: " + segs);
-  console.log("QTD Longitudes........: " + qtd_longitudes.toLocaleString("pt-BR"));
-  console.log("QTD decimal Latitudes.: " + qtd_decpart_latitudes.toLocaleString("pt-BR"));
-  console.log("QTD por processo......: " + qtd_per_process.toLocaleString("pt-BR"));
-  console.log("QTD total.............: " + qtd_all.toLocaleString("pt-BR"));
-  console.log("Progress update on....: " + update_count);
+  console.log("Precisão...............: " + precision);
+  console.log("Incrementos............: " + inc);
+  console.log("Processos..............: " + qtd_process);
+  console.log("Latitudes por processo.: " + segs);
+  console.log("QTD Longitudes.........: " + qtd_longitudes.toLocaleString("pt-BR"));
+  console.log("QTD decimal Latitudes..: " + qtd_decpart_latitudes.toLocaleString("pt-BR"));
+  console.log("QTD por processo.......: " + qtd_per_process.toLocaleString("pt-BR"));
+  console.log("QTD total estimada.....: " + qtd_all.toLocaleString("pt-BR"));
+  console.log("Progress update on.....: " + update_count);
   console.log("");
   let remaining_calcs = [];
 
@@ -370,18 +374,18 @@ function main() {
 
       function newBar(isMain, k, percent, size, ok, unok) {
         ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
-        unok = (typeof unok === 'string' && unok.length === 1) ? unok : isMain ? '═' : '─';
-        const bar = ok.substr(0, Math.round(percent * size)).padEnd(size, unok);
-
-        return (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright(bar) : (isMain ? colors.greenBright : colors.grey)(bar);
+        unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
+        const completed = Math.round(percent * size);
+        return (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright : (isMain ? colors.greenBright : colors.cyan)("".padStart(completed, ok))
+          + colors.gray(unok.padStart(size - completed, unok));
       }
 
       if (params.value === 0) {
         return "";
       }
 
-      let p_total = "" + (parseInt(params.total)).toLocaleString("pt-BR");
-      let p_val = "" + (parseInt(params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
+      let p_total = "" + ((params.total)).toLocaleString("pt-BR");
+      let p_val = "" + ((params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
 
       const k = (getVal('k') !== "" && getVal('k') >= 0)
         ? getVal('k')
@@ -392,8 +396,8 @@ function main() {
       const main_p_size = (options.barsize + (isMain ? 17 : 1));
       const step_p_size = Math.round(options.barsize / 2);
 
-      const pbar = newBar(isMain, k, params.progress, main_p_size, isMain ? "" : "■");
-      const stepbar = isMain ? "" : newBar(isMain, k, parseFloat(values.step.trim()) / parseFloat(values.astep.trim()), step_p_size, "■");
+      const pbar = newBar(isMain, k, params.progress, main_p_size, '\u25A0');
+      const stepbar = isMain ? "" : newBar(isMain, k, values.step / values.astep, step_p_size, "■");
 
       let lapse = "0, 00:00:00";
       let remaining = lapse;
@@ -415,15 +419,15 @@ function main() {
 
         remaining = secondsFormated(Math.round(remaining / remaining_calcs.length));
       } else {
-        const makestep = (parseInt(getVal('step')) * params.total) + params.value;
-        const stepmax = parseInt(getVal('astep')) * params.total;
+        const makestep = (getVal('step') * params.total) + params.value;
+        const stepmax = getVal('astep') * params.total;
         process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
       }
 
-      let rr = `${getVal('index')}: ├${pbar}┤  ` + (
+      let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
           ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ T: ${(String(lapse).padStart(12, " "))} | R: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ step: ├${stepbar}┤ ${getVal('step')}/${getVal('astep')} of ${p_val}/${p_total}`
+          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}`
       );
 
       return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
@@ -451,6 +455,11 @@ function main() {
           isStopedSeconds_bars[k] = 0;
 
           if (is_response_from_child(msg, true)) {
+            if (!processStarted[k]) {
+              processStarted[k] = true;
+              totalPerProcess.push(msg.segs * qtd_decpart_latitudes);
+            }
+
             __counter += msg.mymakes;
 
             if ((__counter % qtd_longitudes) === 0) {
@@ -477,15 +486,9 @@ function main() {
               k: k,
               start: String(msg.start).padStart(3, " "),
               skipped: (msg.skipped ? "SKIPPED" : "Built").padStart(7, " "),
-              step: String(msg.step).padStart(3, " "),
-              astep: String((() => {
-                var count = 0;
-                for (var lt = lat_min + k; lt <= lat_max; lt += qtd_process) {
-                  count++;
-                }
-
-                return count * decimal_size;
-              })()).padStart(3, " "),
+              step: msg.step,
+              astep: msg.astep,
+              segs: msg.segs,
               lat: String(msg.lat.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
               long: String(msg.long.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
               index: String(k).padStart(3, ' ')
@@ -501,17 +504,18 @@ function main() {
 
   intervalo = setInterval(() => {
     if (!bar_total) {
-      bar_total = multibar.create(qtd_all, 0);
+      if (totalPerProcess.length == qtd_process) {
+        let sum = 0;
+
+        for (let i = 0; i < totalPerProcess.length; i++) {
+          sum += totalPerProcess[i];
+        }
+
+        bar_total = multibar.create(sum, 0);
+      }
     }
 
     bar_total.update(__total, {
-      start: " ".padStart(3, " "),
-      skipped: ("MAIN").padStart(7, " "),
-      step: " ".padStart(4, " "),
-      astep: " ".padStart(4, " "),
-      seg: '  ',
-      aseg: '  ',
-      lat: "".padStart(pad_adress), long: "".padStart(pad_adress), index: ">>>"
     });
 
     if (__total >= qtd_all) {
