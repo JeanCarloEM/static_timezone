@@ -403,6 +403,8 @@ function main() {
       let remaining = lapse;
       let process_p = 0;
 
+      const stepmax = getVal('astep') * params.total;
+
       if (isMain) {
         let runtime = Date.now() - params.startTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
@@ -420,14 +422,13 @@ function main() {
         remaining = secondsFormated(Math.round(remaining / remaining_calcs.length));
       } else {
         const makestep = (getVal('step') * params.total) + params.value;
-        const stepmax = getVal('astep') * params.total;
         process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
       }
 
       let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
           ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}`
+          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
       );
 
       return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
