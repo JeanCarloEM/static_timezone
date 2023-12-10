@@ -428,8 +428,7 @@ function main() {
   console.log("Save Path..............: " + root);
   console.log("");
 
-  let remaining_calcs = [];
-  let runtime_calcs = [];
+  let runtime_byitem_calcs = [];
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -508,22 +507,19 @@ function main() {
         let runtime = Date.now() - startedTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
 
-        runtime_calcs.push(runtime / params.value / 1000);
-        remaining_calcs.push((Math.round((runtime_calcs[runtime_calcs.length - 1]) * (params.total - params.value))));
+        runtime_byitem_calcs.push(runtime / params.value / 1000);
 
-        while (remaining_calcs.length > qtd_process) {
-          remaining_calcs.shift();
-          runtime_calcs.shift();
+        while (runtime_byitem_calcs.length > qtd_process * 7) {
+          runtime_byitem_calcs.shift();
         }
 
-        remaining = 0;
-        for (let i = 0; i < remaining_calcs.length; i++) {
-          remaining += remaining_calcs[i];
-          ms_by_item += runtime_calcs[i];
+        for (let i = 0; i < runtime_byitem_calcs.length; i++) {
+          ms_by_item += runtime_byitem_calcs[i];
         }
 
-        remaining = secondsFormated(Math.round(remaining / remaining_calcs.length));
-        ms_by_item = String((ms_by_item / remaining_calcs.length).toFixed(3).toLocaleString('pt-BR')).padStart(6, " ");
+        ms_by_item = ms_by_item / runtime_byitem_calcs.length;
+        remaining = secondsFormated(Math.round(ms_by_item * (params.total - params.value)));
+        ms_by_item = String(ms_by_item.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
       } else {
         const makestep = (getVal('step') * params.total) + params.value;
         process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
