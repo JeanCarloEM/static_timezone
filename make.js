@@ -435,6 +435,9 @@ function main() {
 
   }, cliProgress.Presets.shades_grey);
 
+  /**
+   * CREATE PROGRESSBAR
+   */
   (Array(qtd_process).fill('0')).forEach((e, k) => {
     var __counter = 0;
     const bar = multibar.create(qtd_longitudes, 0);
@@ -502,6 +505,9 @@ function main() {
   var bar_total = false;
   var intervalo;
 
+  /**
+   * UPDATE GLOBAL PROGRESS BART
+   */
   intervalo = setInterval(() => {
     if (!bar_total) {
       if (totalPerProcess.length == qtd_process) {
@@ -513,6 +519,10 @@ function main() {
 
         bar_total = multibar.create(sum, 0);
       }
+    }
+
+    if (!bar_total) {
+      return;
     }
 
     bar_total.update(__total, {
