@@ -5,11 +5,50 @@ const cliProgress = require('cli-progress');
 const os = require('os');
 const { fork } = require('child_process');
 const colors = require('ansi-colors');
+const _argv = require('minimist')(process.argv.slice(2))
+const startedTime = Date.now();
 
-const precision = 2;
+/**
+ *
+ * @param {*} x
+ * @returns
+ */
+function getCMDParam(abrev, fullname, defval) {
+  const __get = (x) => {
+    if (_argv.hasOwnProperty(x)) {
+      return _argv[x];
+    }
+
+    if (_argv._.indexOf(x) >= 0) {
+      return true;
+    }
+
+    return (typeof defval !== 'undefined') ? defval : false;
+  }
+
+  abrev = abrev.trim();
+  fullname = (typeof fullname === 'string') ? fullname.trim() : "";
+
+  let x = __get(abrev);
+
+  return x !== false ? x : (
+    (fullname.length > 0)
+      ? __get(fullname)
+      : false
+  );
+}
+
+const precision = getCMDParam('p', 'precision', 2);
+const update_count = getCMDParam('u', 'update', 100);
+const isFreezeSeconds = getCMDParam('u', 'update', 20);
+const root = getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim();
+
+const save_json = getCMDParam('j', 'save-json', false);
+const save_raw = getCMDParam('s', 'save-raw', true);
+const qtd_process = getCMDParam('t', 'threads', Math.ceil(os.cpus().length));
+
 const decimal_size = Math.pow(10, precision);
 const inc = 1 / decimal_size;
-const qtd_process = Math.ceil(os.cpus().length);
 const lat_min = -90;
 const lat_max = 90;
 const long_min = -180;
@@ -21,10 +60,9 @@ const qtd_longitudes = long_range * decimal_size;
 const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
-const update_count = 100;
-const destPath = path.join(__dirname, `from/gcs/${(precision)}-digit`);
+const destPath = path.join(`${root}/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
-const isFreezeSeconds = 20;
+
 
 /**
  *
@@ -70,7 +108,7 @@ function mergeDeep(target, ...sources) {
  * @param {*} fromto
  * @returns
  */
-function readSavedPos(saved_pos_path, fromto) {
+function readSavedProcessingPos(saved_pos_path, fromto) {
   var saved_pos_data__ = false;
 
   if (fs.existsSync(saved_pos_path)) {
@@ -85,7 +123,18 @@ function readSavedPos(saved_pos_path, fromto) {
     lt: fromto,
     lt_dec: 0,
     lg: long_min,
-    step: 1
+    step: 1,
+    process: qtd_process,
+    decimal_size: decimal_size,
+
+    params: {
+      precision: precision,
+      update_count: update_count,
+      isFreezeSeconds: isFreezeSeconds,
+
+      save_json: save_json,
+      save_raw: save_raw
+    }
   };
 }
 
@@ -99,35 +148,52 @@ function childs(start, id) {
   start = start ? start : 0;
   const fromto = lat_min + start;
   const saved_pos_path = `${destPath}/${id}.process.json`;
-  const saved_pos_data = readSavedPos(saved_pos_path, fromto);
+  const saved_pos_path_tmp = `${destPath}/${id}.tmp.data.json`;
+  const saved_pos_path_finished = `${destPath}/${id}.finidhed.data.json`;
+  const saved_pos_data = readSavedProcessingPos(saved_pos_path, fromto);
+
+  /** BEFORE, check cmd parameter != last runtime */
+  if (!(
+    saved_pos_data.process == qtd_process &&
+    saved_pos_data.params.precision == precision &&
+    saved_pos_data.params.update_count == update_count &&
+    saved_pos_data.params.isFreezeSeconds == isFreezeSeconds &&
+
+    saved_pos_data.params.save_json == save_json &&
+    saved_pos_data.params.save_raw == save_raw
+  )) {
+    console.error("ERROR, child id '", id, "':", "childs()", "saved cmd parameter != actual parameter.")
+    process.send({ id: id, error: 4 });
+    return;
+  }
+
+  // is inished
+  if (fs.existsSync(saved_pos_path_finished)) {
+    try {
+      fs.unlinkSync(saved_pos_path_tmp);
+      fs.unlinkSync(saved_pos_path);
+    } catch (error) {
+
+    }
+    return;
+  }
 
   var _step_lg_builts = 0;
 
-  const max_steps = (() => {
-    var sum = 0;
-    for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
-      sum++;
-    }
-    return sum * decimal_size;
-  })();
+  const max_steps = ((lat_max - fromto + 1) / qtd_process) * decimal_size;
+
+  let group_items = {};
+
+  try {
+    group_items =
+      fs.existsSync(saved_pos_path_tmp)
+        ? JSON.parse(fs.readFileSync(saved_pos_path_tmp, 'ascii'))
+        : {};
+  } catch (e) {
+
+  }
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
-    let _dir_json = `${destPath}/lat/${lt}`;
-    let group_items;
-
-    try {
-      group_items =
-        (fs.existsSync(`${_dir_json}/tmp.json`))
-          ? JSON.parse(fs.readFileSync(`${_dir_json}/tmp.json`, 'ascii'))
-          : (
-            (fs.existsSync(`${_dir_json}/finished.json`))
-              ? JSON.parse(fs.readFileSync(`${_dir_json}/finished.json`, 'ascii'))
-              : {}
-          );
-    } catch (error) {
-      group_items = {};
-    }
-
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
       _step_lg_builts = Math.abs(((lt - fromto) / qtd_process) * decimal_size) + ((decimal_size - lt_dec) - 1);
 
@@ -144,7 +210,8 @@ function childs(start, id) {
       for (var lg = long_min; lg <= long_max; lg++) {
         const lgsignal = lt >= 0;
 
-        const skipthis = (
+        /** if skip, continue loop for check existing data */
+        let skipthis = (
           (lt < saved_pos_data.lt) ||
           (
             (lt === saved_pos_data.lt) &&
@@ -158,17 +225,6 @@ function childs(start, id) {
           )
         );
 
-        if (!skipthis) {
-          writedata(saved_pos_path, JSON.stringify({
-            lt: lt,
-            lt_dec: lt_dec,
-            lg: lg,
-
-            step: _step_lg_builts,
-            id: id
-          }));
-        }
-
         let last_items = {};
         var longitude;
         let localSkip = skipthis;
@@ -180,54 +236,85 @@ function childs(start, id) {
             continue;
           }
 
-          let lgpath = String(longitude).replace(/[,\.]/, '/');
+          let lgpath = String(longitude).replace(/[,\.]/g, '/');
           let __dest = `${_dir}/long/${lgpath}`;
 
-          let zone = (find(latitude, longitude) + "").trim();
+          let zone = false;
 
-          if (fs.existsSync(`${__dest}`)) {
-            try {
-              let content = fs.readFileSync(`${__dest}`, 'ascii').trim();
-              if (content.length > 0) {
-                if ((content + "").trim() !== zone) {
-                  console.error("ERROR", "ZONE saved invalid.\n", `'${__dest}'\n`, `'${zone}'`, " !=", `'${content}'`);
-                  process.send({ id: id, error: 2 });
-                  return;
+          if (group_items.hasOwnProperty(`${latitude}`) && group_items[`${latitude}`].hasOwnProperty(`${longitude}`)) {
+            zone = group_items[`${latitude}`][`${longitude}`];
+
+            if (fs.existsSync(`${__dest}`)) {
+              try {
+                let content = fs.readFileSync(`${__dest}`, 'ascii').trim();
+                if (content.length > 0) {
+                  if ((content + "").trim() !== zone) {
+                    localSkip = false;
+                  }
+                } else {
+                  localSkip = false;
                 }
-
-                localSkip = true;
-              } else {
-                localSkip = false;
+              } catch (e) {
+                console.error(id, __dest, e);
+                process.send({ id: id, error: 3 });
+                return;
               }
-            } catch (e) {
-              console.error(id, __dest, e);
-              process.send({ id: id, error: 3 });
-              return;
+            } else {
+              localSkip = false;
             }
+          }
+
+          if (!zone) {
+            zone = (find(latitude, longitude) + "").trim();
+            localSkip = false;
           }
 
           if (!localSkip) {
             try {
-              //writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
-              writedata(`${__dest}`, `${zone}`);
+              if (save_json) {
+                writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+              }
+
+              if (save_raw) {
+                writedata(`${__dest}`, `${zone}`);
+              }
             } catch (e) {
               console.error("ERROR", "writedata(__dest)", id, e);
               process.send({ id: id, error: 1 });
               return;
             }
 
-            ltpath = ltpath.replace(/[\/]/, ',');
-            lgpath = lgpath.replace(/[\/]/, ',');
+            last_items[`${latitude}`] = last_items[`${latitude}`] ? last_items[`${latitude}`] : {};
+            last_items[`${latitude}`][`${longitude}`] = `${zone}`;
 
-            last_items[`${ltpath}`] = last_items[`${ltpath}`] ? last_items[`${ltpath}`] : {};
-            last_items[`${ltpath}`][`${lgpath}`] = `${zone}`;
-
-            group_items[`${ltpath}`] = last_items[`${ltpath}`] ? last_items[`${ltpath}`] : {};
-            group_items[`${ltpath}`][`${lgpath}`] = `${zone}`;
+            group_items[`${latitude}`] = last_items[`${latitude}`] ? last_items[`${latitude}`] : {};
+            group_items[`${latitude}`][`${longitude}`] = `${zone}`;
           }
         }
 
-        writedata(`${_dir_json}/tmp.json`, JSON.stringify(group_items, null, 0));
+        if (!skipthis || !localSkip) {
+          writedata(saved_pos_path_tmp, JSON.stringify(group_items, null, 0));
+
+          writedata(saved_pos_path, JSON.stringify({
+            lt: lt,
+            lt_dec: lt_dec,
+            lg: lg,
+            step: _step_lg_builts,
+            id: id,
+            process: qtd_process,
+            decimal_size: decimal_size,
+
+            params: {
+              precision: precision,
+              update_count: update_count,
+              isFreezeSeconds: isFreezeSeconds,
+
+              save_json: save_json,
+              save_raw: save_raw
+            }
+          }));
+        }
+
         process.send({
           skipped: skipthis || localSkip,
           step: _step_lg_builts,
@@ -242,10 +329,10 @@ function childs(start, id) {
         });
       }
     }
-
-    writedata(`${_dir_json}/finished.json`, JSON.stringify(group_items, null, 0));
-    fs.unlinkSync(`${_dir_json}/tmp.json`);
   }
+
+  writedata(saved_pos_path_finished, JSON.stringify(group_items, null, 0));
+  fs.unlinkSync(saved_pos_path_tmp);
 }
 
 
@@ -338,8 +425,11 @@ function main() {
   console.log("QTD por processo.......: " + qtd_per_process.toLocaleString("pt-BR"));
   console.log("QTD total estimada.....: " + qtd_all.toLocaleString("pt-BR"));
   console.log("Progress update on.....: " + update_count);
+  console.log("Save Path..............: " + root);
   console.log("");
+
   let remaining_calcs = [];
+  let runtime_calcs = [];
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -410,24 +500,30 @@ function main() {
       let lapse = "0, 00:00:00";
       let remaining = lapse;
       let process_p = 0;
+      let ms_by_item = 0;
 
       const stepmax = getVal('astep') * params.total;
 
       if (isMain) {
-        let runtime = Date.now() - params.startTime;
+        let runtime = Date.now() - startedTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
-        remaining_calcs.push((Math.round((runtime / 1000 / params.value) * (params.total - params.value))));
 
-        while (remaining_calcs.length > (qtd_process * 7)) {
+        runtime_calcs.push(runtime / params.value / 1000);
+        remaining_calcs.push((Math.round((runtime_calcs[runtime_calcs.length - 1]) * (params.total - params.value))));
+
+        while (remaining_calcs.length > qtd_process) {
           remaining_calcs.shift();
+          runtime_calcs.shift();
         }
 
         remaining = 0;
         for (let i = 0; i < remaining_calcs.length; i++) {
           remaining += remaining_calcs[i];
+          ms_by_item += runtime_calcs[i];
         }
 
         remaining = secondsFormated(Math.round(remaining / remaining_calcs.length));
+        ms_by_item = String((ms_by_item / remaining_calcs.length).toFixed(3).toLocaleString('pt-BR')).padStart(6, " ");
       } else {
         const makestep = (getVal('step') * params.total) + params.value;
         process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
@@ -435,7 +531,7 @@ function main() {
 
       let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
-          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
+          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ ${ms_by_item} s/item ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
           : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
       );
 
@@ -452,7 +548,11 @@ function main() {
     const bar = multibar.create(qtd_longitudes, 0);
     progressbars[k] = bar;
 
-    fork('make.js')
+    fork(process.argv[1], (() => {
+      const nn = process.argv;
+      nn[nn.indexOf('start')] = '';
+      return nn;
+    })())
       .on('message', (msg) => {
         ((progress) => {
           if (!is_response_from_child(msg, false)) {
@@ -460,7 +560,7 @@ function main() {
           }
 
           if (msg.hasOwnProperty("error")) {
-            console.error("Exited with code:", msg.error);
+            console.error("Child '", k, "' exited with code:", msg.error);
             return terminate();
           }
 
@@ -563,6 +663,6 @@ function main() {
 /**
  *
  */
-if ((process.argv.length >= 3)) {
+if (getCMDParam('start')) {
   main();
 }
