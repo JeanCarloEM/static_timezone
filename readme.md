@@ -10,7 +10,7 @@ All files are static and can be served by a basic WEB server, or even by github 
 
 #### ATTENTION! Small but takes up a lot of disk space
 
-That there are more than **648,000,000** files, which despite being no more than 48 bytes (which would give a maximum of **31GB**), in reality occupy more than **333GB** of disk space with the exFat file system of 512 bytes cluster or **2.7TB** for partition with a 4K cluster.
+It is estimated that there are more than **577,800,000** files, which despite not having more than 48bytes (which would give a maximum of **31GB**), in reality occupy more than **333GB** of disk space with the exFat file system of 512 bytes cluster or **2.7TB** for partition with a 4K cluster.
 
 ## API
 
