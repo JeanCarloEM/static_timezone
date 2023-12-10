@@ -104,7 +104,7 @@ function childs(start, id) {
   var _step_lg_builts = 0;
 
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
-    let _dir_json = `${destPath}/lat/${lt}.json`;
+    let _dir_json = `${destPath}/lat/${lt}`;
     let group_items;
 
     try {
