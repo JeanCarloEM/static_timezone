@@ -535,6 +535,7 @@ function main() {
     }
 
     bar_total.update(__total, {
+      index: "---"
     });
 
     if (__total >= qtd_all) {
