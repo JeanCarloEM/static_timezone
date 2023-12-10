@@ -103,6 +103,14 @@ function childs(start, id) {
 
   var _step_lg_builts = 0;
 
+  const max_steps = (() => {
+    var sum = 0;
+    for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
+      sum++;
+    }
+    return sum * decimal_size;
+  })();
+
   for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
     let _dir_json = `${destPath}/lat/${lt}`;
     let group_items;
@@ -121,7 +129,7 @@ function childs(start, id) {
     }
 
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
-      _step_lg_builts = (((lt - fromto) / qtd_process) * decimal_size) + lt_dec;
+      _step_lg_builts = Math.abs(((lt - fromto) / qtd_process) * decimal_size) + (decimal_size - lt_dec);
 
       const ltsignal = lt >= 0;
       var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
@@ -223,7 +231,7 @@ function childs(start, id) {
         process.send({
           skipped: skipthis || localSkip,
           step: _step_lg_builts,
-          astep: Math.round((lat_max - fromto) / qtd_process) * decimal_size,
+          astep: max_steps,
           segs: (lat_max - fromto) / qtd_process,
           id: id,
           mymakes: decimal_size,
