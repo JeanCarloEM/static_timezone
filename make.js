@@ -426,7 +426,7 @@ function main() {
 
       let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
-          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ T: ${(String(lapse).padStart(12, " "))} | R: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
+          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
           : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}`
       );
 
