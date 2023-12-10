@@ -121,7 +121,7 @@ function childs(start, id) {
     }
 
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
-      _step_lg_builts = ((lt - fromto) / qtd_process) * lt_dec;
+      _step_lg_builts = (((lt - fromto) / qtd_process) * decimal_size) + lt_dec;
 
       const ltsignal = lt >= 0;
       var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
