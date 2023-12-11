@@ -44,6 +44,7 @@ const isFreezeSeconds = getCMDParam('u', 'update', 20);
 const root = getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim();
 
 const save_json = getCMDParam('j', 'save-json', false);
+const save_merged_json = getCMDParam('m', 'save-merged-json', false);
 const save_raw = getCMDParam('s', 'save-raw', true);
 const qtd_process = getCMDParam('t', 'threads', Math.ceil(os.cpus().length));
 
@@ -62,7 +63,6 @@ const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
 const destPath = path.join(`${root}/gcs/${(precision)}-digit`);
 const pad_adress = precision + 1 + 3 + 1;
-
 
 /**
  *
@@ -91,7 +91,10 @@ function mergeDeep(target, ...sources) {
   if (isObject(target) && isObject(source)) {
     for (const key in source) {
       if (isObject(source[key])) {
-        if (!target[key]) Object.assign(target, { [key]: {} });
+        if (!target[key]) {
+          Object.assign(target, { [key]: {} });
+        }
+
         mergeDeep(target[key], source[key]);
       } else {
         Object.assign(target, { [key]: source[key] });
@@ -244,24 +247,43 @@ function childs(start, id) {
           if (group_items.hasOwnProperty(`${latitude}`) && group_items[`${latitude}`].hasOwnProperty(`${longitude}`)) {
             zone = group_items[`${latitude}`][`${longitude}`];
 
-            if (fs.existsSync(`${__dest}`)) {
+            localSkip = ((check) => {
+              if (
+                (save_raw && fs.existsSync(`${__dest}`) && !check(`${__dest}`)) ||
+                (save_json && fs.existsSync(`${__dest}.json`) && !check(`${__dest}.json`, true))
+              ) {
+                return false;
+              }
+
+              return localSkip;
+              /**
+               * check file, and content
+               */
+            })((fp, json) => {
               try {
-                let content = fs.readFileSync(`${__dest}`, 'ascii').trim();
-                if (content.length > 0) {
-                  if ((content + "").trim() !== zone) {
-                    localSkip = false;
-                  }
-                } else {
-                  localSkip = false;
+                if (fs.statSync(fp).size < 3) {
+                  return false;
                 }
               } catch (e) {
-                console.error(id, __dest, e);
-                process.send({ id: id, error: 3 });
-                return;
+                console.error(id, fp, e);
+                process.send({ id: id, error: 2 });
+                terminate();
               }
-            } else {
-              localSkip = false;
-            }
+
+              try {
+                const content = (json ? JSON.parse : (r) => {
+                  return r;
+                })(fs.readFileSync(fp, 'ascii').trim());
+              } catch (e) {
+                console.error(id, fp, e);
+                process.send({ id: id, error: 3 });
+                terminate();
+              }
+
+              return (json)
+                ? content.tz == zone
+                : content == zone;
+            });
           }
 
           if (!zone) {
@@ -281,13 +303,13 @@ function childs(start, id) {
             } catch (e) {
               console.error("ERROR", "writedata(__dest)", id, e);
               process.send({ id: id, error: 1 });
-              return;
+              terminate()
             }
 
             last_items[`${latitude}`] = last_items[`${latitude}`] ? last_items[`${latitude}`] : {};
             last_items[`${latitude}`][`${longitude}`] = `${zone}`;
 
-            group_items[`${latitude}`] = last_items[`${latitude}`] ? last_items[`${latitude}`] : {};
+            group_items[`${latitude}`] = group_items[`${latitude}`] ? group_items[`${latitude}`] : {};
             group_items[`${latitude}`][`${longitude}`] = `${zone}`;
           }
         }
@@ -409,7 +431,7 @@ function main() {
   var processStarted = (Array(qtd_process)).fill(false);
   var totalPerProcess = [];
 
-  if (fs.existsSync(`${destPath}/full.temp.json`)) {
+  if (save_merged_json && fs.existsSync(`${destPath}/full.temp.json`)) {
     makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`, 'ascii'));
   }
 
@@ -436,7 +458,7 @@ function main() {
     autopadding: true,
     autopaddingChar: " ",
     emptyOnZero: true,
-    forceRedraw: false,
+    forceRedraw: true,
     barsize: 25,
     /*
       parametros:
@@ -578,11 +600,12 @@ function main() {
           }
 
           makes = mergeDeep(makes, msg.items);
-          progress(msg, __counter);
 
-          if ((__total % qtd_longitudes) == 0) {
+          if (save_merged_json && ((__total % qtd_longitudes) == 0)) {
             writedata(`${destPath}/full.temp.json`, JSON.stringify(makes, null, 2));
           }
+
+          progress(msg, __counter);
 
           if (__counter >= (segs * qtd_decpart_latitudes)) {
             bar.stop();
@@ -637,8 +660,9 @@ function main() {
     if (__total >= qtd_all) {
       bar_total.stop();
       console.log("");
-      writedata(`${destPath}/full.json`, JSON.stringify(makes, null, 0));
-      fs.unlinkSync(`${destPath}/full.temp.json`);
+      save_merged_json &&
+        writedata(`${destPath}/full.json`, JSON.stringify(makes, null, 0)) &&
+        fs.unlinkSync(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
       return;
     }
