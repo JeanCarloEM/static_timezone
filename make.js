@@ -62,7 +62,7 @@ const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
 const qtd_all = lat_range * qtd_decpart_latitudes;
 const qtd_per_process = segs * qtd_decpart_latitudes;
 const destPath = path.join(`${root}/gcs/${(precision)}-digit`);
-const pad_adress = precision + 1 + 3 + 1;
+const pad_adress = 1 + 3 + 1 + precision;
 
 /**
  *
@@ -149,7 +149,7 @@ function readSavedProcessingPos(saved_pos_path, fromto) {
  */
 function childs(start, id) {
   start = start ? start : 0;
-  const fromto = lat_min + start;
+  const fromto = lat_min + start + 1;
   const saved_pos_path = `${destPath}/${id}.process.json`;
   const saved_pos_path_tmp = `${destPath}/${id}.tmp.data.json`;
   const saved_pos_path_finished = `${destPath}/${id}.finidhed.data.json`;
@@ -196,21 +196,21 @@ function childs(start, id) {
 
   }
 
-  for (var lt = fromto; lt <= lat_max; lt += qtd_process) {
+  for (var lt = fromto; lt < lat_max; lt += qtd_process) {
     for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
       _step_lg_builts = Math.abs(((lt - fromto) / qtd_process) * decimal_size) + ((decimal_size - lt_dec) - 1);
 
       const ltsignal = lt >= 0;
-      var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size))).toFixed(precision);
+      var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size)));
 
       if ((latitude < lat_min) || (latitude > lat_max)) {
         continue;
       }
 
-      let ltpath = String(latitude).replace(/[,\.]/, '/');
+      let ltpath = String(latitude.toFixed(precision)).replace(/[,\.]/, '/');
       let _dir = `${destPath}/lat/${ltpath}`;
 
-      for (var lg = long_min; lg <= long_max; lg++) {
+      for (var lg = long_min + 1; lg < long_max; lg++) {
         const lgsignal = lt >= 0;
 
         /** if skip, continue loop for check existing data */
@@ -233,13 +233,13 @@ function childs(start, id) {
         let localSkip = skipthis;
 
         for (var lg_dec = decimal_size - 1; lg_dec >= 0; lg_dec--) {
-          longitude = ((lgsignal ? 1 : - 1) * (Math.abs((parseFloat(lg)) + (lg_dec / decimal_size)))).toFixed(precision);
+          longitude = ((lgsignal ? 1 : - 1) * (Math.abs((parseFloat(lg)) + (lg_dec / decimal_size))));
 
           if ((longitude < long_min) || (longitude > long_max)) {
             continue;
           }
 
-          let lgpath = String(longitude).replace(/[,\.]/g, '/');
+          let lgpath = String(longitude.toFixed(precision)).replace(/[,\.]/g, '/');
           let __dest = `${_dir}/long/${lgpath}`;
 
           let zone = false;
@@ -270,8 +270,10 @@ function childs(start, id) {
                 terminate();
               }
 
+              let content = "  ";
+
               try {
-                const content = (json ? JSON.parse : (r) => {
+                content = (json ? JSON.parse : (r) => {
                   return r;
                 })(fs.readFileSync(fp, 'ascii').trim());
               } catch (e) {
@@ -344,8 +346,8 @@ function childs(start, id) {
           segs: (lat_max - fromto) / qtd_process,
           id: id,
           mymakes: decimal_size,
-          lat: parseFloat(latitude).toFixed(2),
-          long: parseFloat(longitude).toFixed(2),
+          lat: latitude,
+          long: longitude,
           start: fromto,
           items: JSON.parse(JSON.stringify(last_items))
         });
@@ -459,7 +461,7 @@ function main() {
     autopaddingChar: " ",
     emptyOnZero: true,
     forceRedraw: true,
-    barsize: 25,
+    barsize: 20,
     /*
       parametros:
       {
@@ -495,7 +497,7 @@ function main() {
         ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
         unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
         const completed = Math.floor(percent * size);
-        return (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright : (isMain ? colors.greenBright : colors.cyan)("".padStart(completed, ok))
+        return ((isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright : (isMain ? colors.greenBright : colors.cyan))("".padStart(completed, ok))
           + colors.gray(unok.padStart(size - completed, unok));
       }
 
@@ -512,8 +514,8 @@ function main() {
 
       const isMain = (k === (isStopedSeconds_bars.length - 1));
 
-      const main_p_size = (options.barsize + (isMain ? 17 : 1));
-      const step_p_size = Math.round(options.barsize / 2);
+      const main_p_size = options.barsize;
+      const step_p_size = options.barsize;
 
       const pbar = newBar(isMain, k, params.progress, main_p_size, '\u25A0');
       const stepbar = isMain ? "" : newBar(isMain, k, values.step / values.astep, step_p_size, "■");
@@ -550,7 +552,7 @@ function main() {
       let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
           ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ ${ms_by_item} s/item ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(3, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
+          : `${String(Math.round((params.progress) * 100)).padStart(3, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat').padStart(1 + 3 + 1 + precision, " ")}/${getVal('long').padStart(1 + 3 + 1 + precision, " ")}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
       );
 
       return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
@@ -620,8 +622,8 @@ function main() {
               step: msg.step,
               astep: msg.astep,
               segs: msg.segs,
-              lat: String(msg.lat.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
-              long: String(msg.long.toLocaleString("pt-BR")).padStart(pad_adress, ' '),
+              lat: String(msg.lat.toFixed(precision)).padStart(pad_adress, ' '),
+              long: String(msg.long.toFixed(precision)).padStart(pad_adress, ' '),
               index: String(k).padStart(3, ' ')
             }
           );
