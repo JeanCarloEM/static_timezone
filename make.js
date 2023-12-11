@@ -494,7 +494,7 @@ function main() {
       function newBar(isMain, k, percent, size, ok, unok) {
         ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
         unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
-        const completed = Math.round(percent * size);
+        const completed = Math.floor(percent * size);
         return (isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright : (isMain ? colors.greenBright : colors.cyan)("".padStart(completed, ok))
           + colors.gray(unok.padStart(size - completed, unok));
       }
@@ -550,7 +550,7 @@ function main() {
       let rr = `${getVal('index')}: |${pbar}| ` + (
         isMain
           ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ ${ms_by_item} s/item ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(2, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
+          : `${String(Math.round((params.progress) * 100)).padStart(3, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat')}/${getVal('long')}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
       );
 
       return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
