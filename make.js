@@ -1,14 +1,15 @@
 
-const path = require('path');
-const cliProgress = require('cli-progress');
-const os = require('os');
-const { fork } = require('child_process');
-const colors = require('ansi-colors');
-const startedTime = Date.now();
-const { getCMDParam, has } = require("commom.js");
-const { mergeDeep } = require('./maker/commom.js');
+import * as path from 'path';
+import * as cliProgress from 'cli-progress';
+import * as os from 'os';
+import { fork } from 'child_process';
+import colors from 'ansi-colors';
+import { getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import {makeLatitudes} from "./.maker/makeLatitudes.js"
 
-const options = {
+const startedTime = Date.now();
+
+const ___pre_ = {
   precision: getCMDParam('p', 'precision', 2)
   , update_count: getCMDParam('u', 'update', 100)
   , isFreezeSeconds: getCMDParam('u', 'update', 20)
@@ -20,23 +21,35 @@ const options = {
   , qtd_process: getCMDParam('t', 'threads', Math.ceil(os.cpus().length))
   , inc_multiply: getCMDParam('m', 'multiply', 1)
 
-  , decimal_lt_size: Math.pow(10, precision)
-  , decimal_lg_size: Math.pow(10, precision)
   , lat_min: -58
   , lat_max: 84
   , long_min: -180
   , long_max: 180
-  , lat_range: (lat_max - lat_min)
-  , long_range: (long_max - long_min)
-  , segs: Math.ceil(lat_range / qtd_process)
-  , qtd_longitudes: long_range * decimal_size
-  , qtd_decpart_latitudes: decimal_size * qtd_longitudes
-  , qtd_all: lat_range * qtd_decpart_latitudes
-  , qtd_per_process: segs * qtd_decpart_latitudes
-  , destPath: path.join(`${root}/gcs/${(precision)}-digit`)
-  , pad_adress: 1 + 3 + 1 + precision
-  , ignores: []
 };
+
+const ___pre_2 = mergeDeep({
+  decimal_lt_size: Math.pow(10, ___pre_.recision)
+  , decimal_lg_size: Math.pow(10, ___pre_.precision)
+  , lat_range: (___pre_.lat_max - ___pre_.lat_min)
+  , long_range: (___pre_.long_max - ___pre_.long_min)
+}, ___pre_);
+
+const ___pre_3 = mergeDeep({
+  segs: Math.ceil(___pre_2.at_range / ___pre_2.qtd_process)
+  , qtd_longitudes: ___pre_2.long_range * ___pre_2.decimal_lg_size
+}, ___pre_2);
+
+const ___pre_4 = mergeDeep({
+  qtd_decpart_latitudes: ___pre_3.decimal_lt_size * ___pre_3.qtd_longitudes
+}, ___pre_3);
+
+const options = mergeDeep({
+  qtd_longitudes: ___pre_4.long_range * ___pre_4.decimal_lg_size
+  , qtd_all: ___pre_4.lat_range * ___pre_4.qtd_decpart_latitudes
+  , qtd_per_process: ___pre_4.segs * ___pre_4.qtd_decpart_latitudes
+  , destPath: path.join(`${___pre_4.root}/gcs/${(___pre_4.precision)}-digit`)
+  , pad_adress: 1 + 3 + 1 + ___pre_4.precision
+}, ___pre_4);
 
 
 
@@ -53,7 +66,7 @@ process.on('message', (msg) => {
     return;
   }
 
-  if ((lat_min + msg.start) > lat_max) {
+  if ((options.lat_min + msg.start) > options.lat_max) {
     console.error(`>>> Segmento '${msg.start}' FORA do range`);
     return;
   }
@@ -125,33 +138,31 @@ function secondsFormated(s) {
  *
  */
 function main() {
-  var __total = 0;
+  var __total = { complete: 0, forced: 0 };
   var makes = {};
-  var isStopedSeconds_bars = (Array(qtd_process + 1)).fill(0);
-  var progressbars = (Array(qtd_process)).fill(0);
-  var processStarted = (Array(qtd_process)).fill(false);
+  var isStopedSeconds_bars = (Array(options.qtd_process + 1)).fill(0);
+  var progressbars = (Array(options.qtd_process)).fill(0);
+  var processStarted = (Array(options.qtd_process)).fill(false);
   var totalPerProcess = [];
 
-  if (save_merged_json && fs.existsSync(`${destPath}/full.temp.json`)) {
-    makes = JSON.parse(fs.readFileSync(`${destPath}/full.temp.json`, 'ascii'));
+  if (options.save_merged_json && fs.existsSync(`${options.destPath}/full.temp.json`)) {
+    makes = JSON.parse(fs.readFileSync(`${options.destPath}/full.temp.json`, 'ascii'));
   }
 
   console.log("");
   console.log("Inicializando.");
   console.log("");
-  console.log("Precisão...............: " + precision);
-  console.log("Incrementos............: " + (inc * inc_multiply));
-  console.log("Processos..............: " + qtd_process);
-  console.log("Latitudes por processo.: " + segs);
-  console.log("QTD Longitudes.........: " + qtd_longitudes.toLocaleString("pt-BR"));
-  console.log("QTD decimal Latitudes..: " + qtd_decpart_latitudes.toLocaleString("pt-BR"));
-  console.log("QTD por processo.......: " + qtd_per_process.toLocaleString("pt-BR"));
-  console.log("QTD total estimada.....: " + qtd_all.toLocaleString("pt-BR"));
-  console.log("Progress update on.....: " + update_count);
-  console.log("Save Path..............: " + root);
+  console.log("Precisão...............: " + options.precision);
+  console.log("Incrementos............: " + (options.inc * options.inc_multiply));
+  console.log("Processos..............: " + options.qtd_process);
+  console.log("Latitudes por processo.: " + options.segs);
+  console.log("QTD Longitudes.........: " + options.qtd_longitudes.toLocaleString("pt-BR"));
+  console.log("QTD decimal Latitudes..: " + options.qtd_decpart_latitudes.toLocaleString("pt-BR"));
+  console.log("QTD por processo.......: " + options.qtd_per_process.toLocaleString("pt-BR"));
+  console.log("QTD total estimada.....: " + options.qtd_all.toLocaleString("pt-BR"));
+  console.log("Progress update on.....: " + options.update_count);
+  console.log("Save Path..............: " + options.root);
   console.log("");
-
-  let runtime_byitem_calcs = [];
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -183,7 +194,7 @@ function main() {
         index: ' 39'
       }
             {
-              global_progress
+              global_makes
               id
               write_return_status
               first_lat
@@ -193,60 +204,57 @@ function main() {
     */
     format: (options, params, values) => {
       function getVal(x) {
-        if (has(values, x) && (typeof values[x] !== "undefined")) {
+        if (has(values, x)) {
           return values[x];
         }
 
         return "";
       }
 
-      function newBar(isMain, k, percent, size, ok, unok) {
+      function isfreeze(index) {
+        return (typeof isStopedSeconds_bars[index] !== "boolean") ||
+          (isStopedSeconds_bars[index] > isFreezeSeconds);
+      }
+
+      function newBar(isMain, index, percent, size, ok, unok) {
         ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
         unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
         const completed = Math.floor(percent * size);
-        return ((isStopedSeconds_bars[k] > isFreezeSeconds) ? colors.redBright : (isMain ? colors.greenBright : colors.cyan))("".padStart(completed, ok))
-          + colors.gray(unok.padStart(size - completed, unok));
+        return (
+          (isfreeze(index)
+            ? colors.redBright
+            : (
+              isMain
+                ? colors.greenBright
+                : colors.cyan
+            )
+          )("".padStart(completed, ok))
+        ) + colors.gray(unok.padStart(size - completed, unok));
       }
 
-      if (params.value === 0) {
-        return "";
-      }
-
-      let p_total = "" + ((params.total)).toLocaleString("pt-BR");
-      let p_val = "" + ((params.value)).toLocaleString("pt-BR").padStart(p_total.length, " ");
-
-      const k = (getVal('k') !== "" && getVal('k') >= 0)
-        ? getVal('k')
+      const id = (getVal('id') !== "" && getVal('id') >= 0)
+        ? getVal('id')
         : isStopedSeconds_bars.length - 1;
 
-      const isMain = (k === (isStopedSeconds_bars.length - 1));
+      const isMain = (id === (isStopedSeconds_bars.length - 1));
 
       const main_p_size = options.barsize;
       const step_p_size = options.barsize;
+      const global_progress = values.global_makes / values.global_full;
 
-      const pbar = newBar(isMain, k, params.progress, main_p_size, '\u25A0');
-      const stepbar = isMain ? "" : newBar(isMain, k, values.step / values.astep, step_p_size, "■");
+      const pbar = newBar(isMain, id, params.progress, main_p_size, '\u25A0');
+      const gbar = isMain ? "" : newBar(isMain, id, global_progress, step_p_size, "■");
 
       let lapse = "0, 00:00:00";
       let remaining = lapse;
       let process_p = 0;
       let ms_by_item = 0;
 
-      const stepmax = getVal('astep') * params.total;
-
       if (isMain) {
         let runtime = Date.now() - startedTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
 
-        runtime_byitem_calcs.push(runtime / params.value / 1000);
-
-        while (runtime_byitem_calcs.length > qtd_process * 7) {
-          runtime_byitem_calcs.shift();
-        }
-
-        for (let i = 0; i < runtime_byitem_calcs.length; i++) {
-          ms_by_item += runtime_byitem_calcs[i];
-        }
+        const runtime_byitem_calcs = runtime / values.global_full / 1000;
 
         ms_by_item = ms_by_item / runtime_byitem_calcs.length;
         remaining = secondsFormated(Math.round(ms_by_item * (params.total - params.value)));
@@ -256,10 +264,62 @@ function main() {
         process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
       }
 
-      let rr = `${getVal('index')}: |${pbar}| ` + (
+      let rr = `${getVal('id')}: |${gbar}| ` + (
         isMain
-          ? `${String(((params.progress) * 100).toFixed(4)).padStart(9, " ")}% ▐ ${ms_by_item} s/item ▐ Elapsed: ${(String(lapse).padStart(12, " "))} | Remaining: ${(String(remaining).padStart(12, " "))} ▐ ${p_val}/${p_total}`
-          : `${String(Math.round((params.progress) * 100)).padStart(3, " ")}% / ${process_p}% ▐ ${getVal('start')} → ${getVal('lat').padStart(1 + 3 + 1 + precision, " ")}/${getVal('long').padStart(1 + 3 + 1 + precision, " ")}, ${(((getVal('skipped') === "SKIPPED") ? colors.bgBlue : colors.bgBlack)(" " + getVal('skipped') + " "))} ▐ Segs: ${getVal('segs').toFixed(2)} ▐ step: |${stepbar}| ${String(getVal('step')).padStart(3, " ")}/${String(Math.round(getVal('astep'))).padStart(3, " ")} of ${p_val}/${p_total}: ${(stepmax.toLocaleString("pt-BR"))}`
+          ? [
+            String(((params.progress) * 100).toFixed(4)).padStart(9, " "),
+            "% ▐",
+            ms_by_item,
+            "s/item ▐ Elapsed:",
+            String(lapse).padStart(12, " "),
+            "| Remaining: ",
+            (String(remaining).padStart(12, " ")),
+            "▐",
+            ((params.value)).toLocaleString("pt-BR").padStart(((params.total)).toLocaleString("pt-BR").length, " "),
+            "/",
+            ((params.total)).toLocaleString("pt-BR")
+          ].join(' ')
+
+          : [
+            String(Math.round((global_progress) * 100)).padStart(3, " "),
+            "% /",
+            process_p,
+            "% ▐",
+            getVal('start'),
+            "→",
+            getVal('latitude').padStart(1 + 3 + 1 + precision, " "),
+            "/",
+            getVal('longitude').toFixed(0).padStart(1 + 3 + 1 + precision, " "),
+            ",",
+            (
+              ((x) => {
+                return (
+                  typeof x === "object"
+                    ? "Built"
+                    : (
+                      x === 0
+                        ? colors.bgBlue("SKIPPED")
+                        : (
+                          x === 1
+                            ? colors.bgGreen("SEAN")
+                            : colors.bgRedBright("???")
+                        )
+                    )
+                )
+              })(getVal('write_return_status'))
+            ),
+            "▐ Longitude Progress:",
+            getVal('segs').toFixed(2),
+            " step:",
+            "|",
+            pbar,
+            "|",
+            String(((params.progress) * 100).toFixed(4)).padStart(9, " "),
+            ",",
+            ((params.value)).toLocaleString("pt-BR").padStart(p_total.length, " "),
+            "/",
+            ((params.total)).toLocaleString("pt-BR")
+          ].join(" ")
       );
 
       return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
@@ -270,9 +330,9 @@ function main() {
   /**
    * CREATE PROGRESSBAR
    */
-  (Array(qtd_process).fill('0')).forEach((e, k) => {
-    var __counter = [0, 0];
-    const bar = multibar.create(qtd_longitudes, 0);
+  (Array(options.qtd_process).fill('0')).forEach((e, k) => {
+    var __counter = { comleted: { part_val: 0, global_val: 0 }, forced: { part_val: 0, global_val: 0 } };
+    const bar = multibar.create(options.qtd_longitudes, 0);
     progressbars[k] = bar;
 
     fork(process.argv[1], (() => {
@@ -294,10 +354,7 @@ function main() {
             return terminate();
           }
 
-
-
           isStopedSeconds_bars[k] = 0;
-
 
           if (has(msg, "increase") && msg.increase) {
             if (!processStarted[k]) {
@@ -305,14 +362,43 @@ function main() {
               totalPerProcess.push(msg.segs * qtd_decpart_latitudes);
             }
 
-            __counter[0] += options.decimal_lg_size;
-            __counter[1] += options.decimal_lg_size
-
-            if ((__counter[0] % qtd_longitudes) === 0) {
-              __counter[0] = 0;
+            if (typeof msg.increase === "numeric") {
+              __counter.forced.part_val += msg.increase;
+              __counter.forced.global_val += msg.increase;
+              __total.forced += msg.increase;
+            } else {
+              __counter.comleted.part_val += options.decimal_lg_size;
+              __counter.comleted.global_val += options.decimal_lg_size;
+              __total.completed += options.decimal_lg_size;
             }
 
-            __total += msg.mymakes;
+            __counter.forced.part_val = (
+              (__counter.forced.part_val > (__counter.comleted.part_val + options.decimal_lg_size))
+            )
+              ? (__counter.comleted.part_val + options.decimal_lg_size)
+              : __counter.forced.part_val;
+
+            __counter.forced.global_val = (
+              (__counter.forced.global_val > (__counter.comleted.global_val + options.decimal_lg_size))
+            )
+              ? (__counter.comleted.part_val + options.decimal_lg_size)
+              : __counter.forced.global_val;
+
+            const part_val = __counter.comleted.part_val > __counter.forced.part_val
+              ? __counter.comleted.part_val
+              : __counter.forced.part_val;
+
+            const global_val = __counter.comleted.global_val > __counter.forced.global_val
+              ? __counter.comleted.global_val
+              : __counter.forced.global_val;
+
+            if ((part_val % qtd_longitudes) === 0) {
+              if (__counter.comleted.part_val > __counter.forced.part_val) {
+                __counter.comleted.part_val = 0;
+              } else {
+                __counter.forced.part_val = 0;
+              }
+            }
           }
 
           if (has(msg, "finished") && (typeof msg.finished === "object")) {
@@ -325,7 +411,7 @@ function main() {
           }
 
           try {
-            progress(msg, __counter);
+            progress(msg, [part_val, global_val]);
           } catch (e) {
 
           }
@@ -333,21 +419,9 @@ function main() {
           bar.update(
             val[0],
             {
-              global_progress: val[1],
+              global_makes: val[1],
               id: k,
-              write_return_status: (
-                typeof write_return_status === "object"
-                  ? "Built"
-                  : (
-                    write_return_status === 0
-                      ? SKIPPED
-                      : (
-                        write_return_status === 1
-                          ? "SEAN"
-                          : "???"
-                      )
-                  )
-              ),
+              write_return_status: write_return_status,
               first_lat: msg.first_lat,
               latitude: msg.latitude,
               longitude: msg.longitude,
@@ -381,15 +455,19 @@ function main() {
       return;
     }
 
-    bar_total.update(__total, {
-      index: "---"
+    const tot = __total.comleted.part_val > __total.forced.part_val
+      ? __total.comleted.part_val
+      : __total.forced.part_val
+
+    bar_total.update(tot, {
+      index: -1
     });
 
-    if (__total >= qtd_all) {
+    if (tot >= qtd_all) {
       bar_total.stop();
       console.log("");
       save_merged_json &&
-        writedata(`${destPath}/full.json`, JSON.stringify(makes, null, 0)) &&
+        writedata(`${destPath} /full.json`, JSON.stringify(makes, null, 0)) &&
         fs.unlinkSync(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
       return;

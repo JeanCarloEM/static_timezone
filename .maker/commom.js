@@ -1,5 +1,7 @@
-const fs = require('fs');
-const _argv = require('minimist')(process.argv.slice(2))
+import fs from 'fs';
+import minimist from 'minimist';
+
+const _argv = minimist(process.argv.slice(2))
 
 export function has(target, k) {
   return target.hasOwnProperty(k) && target[k] !== "undefined";

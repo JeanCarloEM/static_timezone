@@ -1,6 +1,6 @@
-const { find } = require('geo-tz');
-const { has, fexists, fread, fsize } = require("commom.js");
-const isSea = require('is-sea');
+import { find } from 'geo-tz';
+import { has, fexists, fread, fsize } from "./commom.js";
+import { isSea } from 'is-sea';
 
 /**
  *

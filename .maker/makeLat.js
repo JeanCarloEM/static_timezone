@@ -7,7 +7,7 @@ export function makeLat(
   path,
   fail,
   callback,
-  is_non_object
+  write_return_status
 ) {
   loopDecimalPart(
     options.decimal_lt_size,
@@ -34,7 +34,7 @@ export function makeLat(
           allItems,
           path,
           fail,
-          is_non_object
+          write_return_status
         ), latitude, lg);
       }
     },

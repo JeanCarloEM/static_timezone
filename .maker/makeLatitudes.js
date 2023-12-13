@@ -1,5 +1,8 @@
-const { makeLat } = require("makeLat.js");
-const { delfile, writedata, mergeDeep, has, fexists, fread, fsize } = require("commom.js");
+import { writeBatch } from "./writeBatch.js";
+
+import { makeLat } from "./makeLat.js";
+import { delfile, writedata, mergeDeep, has, fexists, fread, fsize } from "./commom.js";
+import { force_update_at } from "./writeBatch.js";
 
 /**
  *
@@ -81,6 +84,10 @@ export function makeLatitudes(
         clback(id, first_lat, latitude, long_int_part, actual_write_return, false);
       },
       (write_return) => {
+        if (typeof write_return === "boolean") {
+          return clback(id, first_lat, latitude, long_int_part, write_return, force_update_at);
+        }
+
         if ((typeof write_return) !== (typeof latest_write_return)) {
           actual_write_return = write_return;
           clback(id, first_lat, latitude, long_int_part, write_return, true);

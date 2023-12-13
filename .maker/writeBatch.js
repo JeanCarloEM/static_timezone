@@ -1,5 +1,7 @@
-const { writeAdress } = require("writeAdress.js");
-const { mergeDeep, loopDecimalPart } = require("commom.js");
+import { writeAdress }  from "./writeAdress.js";
+import { mergeDeep, loopDecimalPart }  from "./commom.js";
+
+export const force_update_at = 10;
 
 export function writeBatch(
   options,
@@ -8,10 +10,11 @@ export function writeBatch(
   allItems,
   path,
   fail,
-  is_non_object
+  write_return_status_OrForceUpdate
 ) {
   let batch_items = {};
   let latest_write_return = {}
+  let loop_count = 0;
 
   loopDecimalPart(
     options.decimal_lg_size,
@@ -20,6 +23,8 @@ export function writeBatch(
     options.long_min,
     options.long_max,
     (longitude) => {
+      let writeReturnOrForceUpdate_used = false;
+
       if ((longitude < options.long_min) || (longitude > options.long_max)) {
         return;
       }
@@ -35,8 +40,19 @@ export function writeBatch(
 
       if ((typeof r) !== (typeof latest_write_return)) {
         latest_write_return = r;
-        (typeof is_non_object === 'function') && is_non_object(r);
+
+        (typeof write_return_status_OrForceUpdate === 'function') &&
+          write_return_status_OrForceUpdate(r);
+
+        writeReturnOrForceUpdate_used = true;
       }
+
+      /* FORCE PROGRESS UPDATE */
+      (((++loop_count) % force_update_at) === 0) &&
+        !writeReturnOrForceUpdate_used &&
+        (typeof write_return_status_OrForceUpdate === 'function') &&
+        write_return_status_OrForceUpdate(true);
+
 
       batch_items = mergeDeep(batch_items, typeof r == 'object' ? r : {});
     }
