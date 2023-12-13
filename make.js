@@ -1,392 +1,54 @@
-const { find } = require('geo-tz');
-const fs = require('fs');
+
 const path = require('path');
 const cliProgress = require('cli-progress');
 const os = require('os');
 const { fork } = require('child_process');
 const colors = require('ansi-colors');
-const _argv = require('minimist')(process.argv.slice(2))
 const startedTime = Date.now();
+const { getCMDParam, has } = require("commom.js");
+const { mergeDeep } = require('./maker/commom.js');
 
-/**
- *
- * @param {*} x
- * @returns
- */
-function getCMDParam(abrev, fullname, defval) {
-  const __get = (x) => {
-    if (_argv.hasOwnProperty(x)) {
-      return _argv[x];
-    }
+const options = {
+  precision: getCMDParam('p', 'precision', 2)
+  , update_count: getCMDParam('u', 'update', 100)
+  , isFreezeSeconds: getCMDParam('u', 'update', 20)
+  , root: getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim()
 
-    if (_argv._.indexOf(x) >= 0) {
-      return true;
-    }
+  , save_json: getCMDParam('j', 'save-json', false)
+  , save_merged_json: getCMDParam('f', 'save-full-json', false)
+  , save_raw: getCMDParam('s', 'save-raw', true)
+  , qtd_process: getCMDParam('t', 'threads', Math.ceil(os.cpus().length))
+  , inc_multiply: getCMDParam('m', 'multiply', 1)
 
-    return (typeof defval !== 'undefined') ? defval : false;
-  }
-
-  abrev = abrev.trim();
-  fullname = (typeof fullname === 'string') ? fullname.trim() : "";
-
-  let x = __get(abrev);
-
-  return x !== false ? x : (
-    (fullname.length > 0)
-      ? __get(fullname)
-      : false
-  );
-}
-
-const precision = getCMDParam('p', 'precision', 2);
-const update_count = getCMDParam('u', 'update', 100);
-const isFreezeSeconds = getCMDParam('u', 'update', 20);
-const root = getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim();
-
-const save_json = getCMDParam('j', 'save-json', false);
-const save_merged_json = getCMDParam('m', 'save-merged-json', false);
-const save_raw = getCMDParam('s', 'save-raw', true);
-const qtd_process = getCMDParam('t', 'threads', Math.ceil(os.cpus().length));
-
-const decimal_size = Math.pow(10, precision);
-const inc = 1 / decimal_size;
-const lat_min = -90;
-const lat_max = 90;
-const long_min = -180;
-const long_max = 180;
-const lat_range = (lat_max - lat_min);
-const long_range = (long_max - long_min);
-const segs = Math.ceil(lat_range / qtd_process);
-const qtd_longitudes = long_range * decimal_size;
-const qtd_decpart_latitudes = decimal_size * qtd_longitudes;
-const qtd_all = lat_range * qtd_decpart_latitudes;
-const qtd_per_process = segs * qtd_decpart_latitudes;
-const destPath = path.join(`${root}/gcs/${(precision)}-digit`);
-const pad_adress = 1 + 3 + 1 + precision;
-
-/**
- *
- * @param {*} spath
- */
-function writedata(spath, ctt) {
-  const dir = path.dirname(spath);
-  !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(`${spath}`, ctt, 'ascii');
-}
-
-/**
- * Deep merge two objects.
- * @param target
- * @param ...sources
- * https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge
- */
-function mergeDeep(target, ...sources) {
-  if (!sources.length) return target;
-  const source = sources.shift();
-
-  function isObject(x) {
-    return typeof x === "object";
-  }
-
-  if (isObject(target) && isObject(source)) {
-    for (const key in source) {
-      if (isObject(source[key])) {
-        if (!target[key]) {
-          Object.assign(target, { [key]: {} });
-        }
-
-        mergeDeep(target[key], source[key]);
-      } else {
-        Object.assign(target, { [key]: source[key] });
-      }
-    }
-  }
-
-  return mergeDeep(target, ...sources);
-}
-
-/**
- *
- * @param {*} saved_pos_path
- * @param {*} fromto
- * @returns
- */
-function readSavedProcessingPos(saved_pos_path, fromto) {
-  var saved_pos_data__ = false;
-
-  if (fs.existsSync(saved_pos_path)) {
-    try {
-      saved_pos_data__ = JSON.parse(fs.readFileSync(saved_pos_path, 'ascii'));
-    } catch (error) {
-      saved_pos_data__ = false;
-    }
-  }
-
-  return saved_pos_data__ ? saved_pos_data__ : {
-    lt: fromto,
-    lt_dec: 0,
-    lg: long_min,
-    step: 1,
-    process: qtd_process,
-    decimal_size: decimal_size,
-
-    params: {
-      precision: precision,
-      update_count: update_count,
-      isFreezeSeconds: isFreezeSeconds,
-
-      save_json: save_json,
-      save_raw: save_raw
-    }
-  };
-}
-
-/**
- *
- * @param {*} start
- * @param {*} id
- * @returns
- */
-function childs(start, id) {
-  start = start ? start : 0;
-  const fromto = lat_min + start + 1;
-  const saved_pos_path = `${destPath}/${id}.process.json`;
-  const saved_pos_path_tmp = `${destPath}/${id}.tmp.data.json`;
-  const saved_pos_path_finished = `${destPath}/${id}.finidhed.data.json`;
-  const saved_pos_data = readSavedProcessingPos(saved_pos_path, fromto);
-
-  /** BEFORE, check cmd parameter != last runtime */
-  if (!(
-    saved_pos_data.process == qtd_process &&
-    saved_pos_data.params.precision == precision &&
-    saved_pos_data.params.update_count == update_count &&
-    saved_pos_data.params.isFreezeSeconds == isFreezeSeconds &&
-
-    saved_pos_data.params.save_json == save_json &&
-    saved_pos_data.params.save_raw == save_raw
-  )) {
-    console.error("ERROR, child id '", id, "':", "childs()", "saved cmd parameter != actual parameter.")
-    process.send({ id: id, error: 4 });
-    return;
-  }
-
-  // is inished
-  if (fs.existsSync(saved_pos_path_finished)) {
-    try {
-      fs.unlinkSync(saved_pos_path_tmp);
-      fs.unlinkSync(saved_pos_path);
-    } catch (error) {
-
-    }
-    return;
-  }
-
-  var _step_lg_builts = 0;
-
-  const max_steps = ((lat_max - fromto + 1) / qtd_process) * decimal_size;
-
-  let group_items = {};
-
-  try {
-    group_items =
-      fs.existsSync(saved_pos_path_tmp)
-        ? JSON.parse(fs.readFileSync(saved_pos_path_tmp, 'ascii'))
-        : {};
-  } catch (e) {
-
-  }
-
-  for (var lt = fromto; lt < lat_max; lt += qtd_process) {
-    for (var lt_dec = decimal_size - 1; lt_dec >= 0; lt_dec--) {
-      _step_lg_builts = Math.abs(((lt - fromto) / qtd_process) * decimal_size) + ((decimal_size - lt_dec) - 1);
-
-      const ltsignal = lt >= 0;
-      var latitude = ((ltsignal ? 1 : - 1) * (Math.abs(parseFloat(lt)) + (lt_dec / decimal_size)));
-
-      if ((latitude < lat_min) || (latitude > lat_max)) {
-        continue;
-      }
-
-      let ltpath = String(latitude.toFixed(precision)).replace(/[,\.]/, '/');
-      let _dir = `${destPath}/lat/${ltpath}`;
-
-      for (var lg = long_min + 1; lg < long_max; lg++) {
-        const lgsignal = lt >= 0;
-
-        /** if skip, continue loop for check existing data */
-        let skipthis = (
-          (lt < saved_pos_data.lt) ||
-          (
-            (lt === saved_pos_data.lt) &&
-            (
-              (lt_dec < saved_pos_data.lt_dec) ||
-              (
-                (lt_dec == saved_pos_data.lt_dec) &&
-                (lg < saved_pos_data.lg)
-              )
-            )
-          )
-        );
-
-        let last_items = {};
-        var longitude;
-        let localSkip = skipthis;
-
-        for (var lg_dec = decimal_size - 1; lg_dec >= 0; lg_dec--) {
-          longitude = ((lgsignal ? 1 : - 1) * (Math.abs((parseFloat(lg)) + (lg_dec / decimal_size))));
-
-          if ((longitude < long_min) || (longitude > long_max)) {
-            continue;
-          }
-
-          let lgpath = String(longitude.toFixed(precision)).replace(/[,\.]/g, '/');
-          let __dest = `${_dir}/long/${lgpath}`;
-
-          let zone = false;
-
-          if (group_items.hasOwnProperty(`${latitude}`) && group_items[`${latitude}`].hasOwnProperty(`${longitude}`)) {
-            zone = group_items[`${latitude}`][`${longitude}`];
-
-            localSkip = ((check) => {
-              if (
-                (save_raw && fs.existsSync(`${__dest}`) && !check(`${__dest}`)) ||
-                (save_json && fs.existsSync(`${__dest}.json`) && !check(`${__dest}.json`, true))
-              ) {
-                return false;
-              }
-
-              return localSkip;
-              /**
-               * check file, and content
-               */
-            })((fp, json) => {
-              try {
-                if (fs.statSync(fp).size < 3) {
-                  return false;
-                }
-              } catch (e) {
-                console.error(id, fp, e);
-                process.send({ id: id, error: 2 });
-                terminate();
-              }
-
-              let content = "  ";
-
-              try {
-                content = (json ? JSON.parse : (r) => {
-                  return r;
-                })(fs.readFileSync(fp, 'ascii').trim());
-              } catch (e) {
-                console.error(id, fp, e);
-                process.send({ id: id, error: 3 });
-                terminate();
-              }
-
-              return (json)
-                ? content.tz == zone
-                : content == zone;
-            });
-          }
-
-          if (!zone) {
-            zone = (find(latitude, longitude) + "").trim();
-            localSkip = false;
-          }
-
-          if (!localSkip) {
-            try {
-              if (save_json) {
-                writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
-              }
-
-              if (save_raw) {
-                writedata(`${__dest}`, `${zone}`);
-              }
-            } catch (e) {
-              console.error("ERROR", "writedata(__dest)", id, e);
-              process.send({ id: id, error: 1 });
-              terminate()
-            }
-
-            last_items[`${latitude}`] = last_items[`${latitude}`] ? last_items[`${latitude}`] : {};
-            last_items[`${latitude}`][`${longitude}`] = `${zone}`;
-
-            group_items[`${latitude}`] = group_items[`${latitude}`] ? group_items[`${latitude}`] : {};
-            group_items[`${latitude}`][`${longitude}`] = `${zone}`;
-          }
-        }
-
-        if (!skipthis || !localSkip) {
-          writedata(saved_pos_path_tmp, JSON.stringify(group_items, null, 0));
-
-          writedata(saved_pos_path, JSON.stringify({
-            lt: lt,
-            lt_dec: lt_dec,
-            lg: lg,
-            step: _step_lg_builts,
-            id: id,
-            process: qtd_process,
-            decimal_size: decimal_size,
-
-            params: {
-              precision: precision,
-              update_count: update_count,
-              isFreezeSeconds: isFreezeSeconds,
-
-              save_json: save_json,
-              save_raw: save_raw
-            }
-          }));
-        }
-
-        process.send({
-          skipped: skipthis || localSkip,
-          step: _step_lg_builts,
-          astep: max_steps,
-          segs: (lat_max - fromto) / qtd_process,
-          id: id,
-          mymakes: decimal_size,
-          lat: latitude,
-          long: longitude,
-          start: fromto,
-          items: JSON.parse(JSON.stringify(last_items))
-        });
-      }
-    }
-  }
-
-  writedata(saved_pos_path_finished, JSON.stringify(group_items, null, 0));
-  fs.unlinkSync(saved_pos_path_tmp);
-}
+  , decimal_lt_size: Math.pow(10, precision)
+  , decimal_lg_size: Math.pow(10, precision)
+  , lat_min: -58
+  , lat_max: 84
+  , long_min: -180
+  , long_max: 180
+  , lat_range: (lat_max - lat_min)
+  , long_range: (long_max - long_min)
+  , segs: Math.ceil(lat_range / qtd_process)
+  , qtd_longitudes: long_range * decimal_size
+  , qtd_decpart_latitudes: decimal_size * qtd_longitudes
+  , qtd_all: lat_range * qtd_decpart_latitudes
+  , qtd_per_process: segs * qtd_decpart_latitudes
+  , destPath: path.join(`${root}/gcs/${(precision)}-digit`)
+  , pad_adress: 1 + 3 + 1 + precision
+  , ignores: []
+};
 
 
 
-/**
- *
- */
-function is_response_from_child(msg, full) {
-  full = full === true ? true : false;
 
-  return (
-    (
-      (typeof msg !== 'object') ||
-      (!msg.hasOwnProperty('id'))
-    )
-      ? false
-      : (!full)
-        ? 1
-        : (
-          msg.hasOwnProperty('items') &&
-          (typeof msg.items === 'object')
-        )
-  );
-}
+
+
 
 /**
  *
  */
 process.on('message', (msg) => {
-  if (!(msg && (typeof msg === 'object') && (msg.hasOwnProperty('start')))) {
+  if (!(msg && (typeof msg === 'object') && (has(msg, 'start')))) {
     console.error(">>> Mensagem INVALIDA.", msg);
     return;
   }
@@ -396,7 +58,44 @@ process.on('message', (msg) => {
     return;
   }
 
-  childs(msg.start, msg.start);
+  makeLatitudes(
+    options,
+    msg.id,
+    options.destPath,
+    (msg, funcName, code) => {
+      console.error(funcName, code, msg);
+      process.send({
+        error: {
+          funcName: funcName,
+          code: code,
+          msg: msg
+        }
+      });
+
+      terminate();
+    },
+    (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished) => {
+      let send = {
+        id: id,
+        first_lat: first_lat,
+        latitude: latitude.toFixed(precision),
+        longitude: long_int_part,
+        write_return_status: write_return_status
+      };
+
+      if (
+        typeof dont_increaseOrFinished === 'object' &&
+        has(dont_increaseOrFinished, 'finished') &&
+        (typeof dont_increaseOrFinished.finished === "object")
+      ) {
+        send = mergeDeep(send, dont_increaseOrFinished);
+      } else {
+        send.increase = dont_increaseOrFinished;
+      }
+
+      process.send(send);
+    }
+  );
 });
 
 /**
@@ -441,7 +140,7 @@ function main() {
   console.log("Inicializando.");
   console.log("");
   console.log("Precisão...............: " + precision);
-  console.log("Incrementos............: " + inc);
+  console.log("Incrementos............: " + (inc * inc_multiply));
   console.log("Processos..............: " + qtd_process);
   console.log("Latitudes por processo.: " + segs);
   console.log("QTD Longitudes.........: " + qtd_longitudes.toLocaleString("pt-BR"));
@@ -483,10 +182,18 @@ function main() {
         long: '-180.00',
         index: ' 39'
       }
+            {
+              global_progress
+              id
+              write_return_status
+              first_lat
+              latitude
+              longitude
+            }
     */
     format: (options, params, values) => {
       function getVal(x) {
-        if (values.hasOwnProperty(x) && (typeof values[x] !== "undefined")) {
+        if (has(values, x) && (typeof values[x] !== "undefined")) {
           return values[x];
         }
 
@@ -564,7 +271,7 @@ function main() {
    * CREATE PROGRESSBAR
    */
   (Array(qtd_process).fill('0')).forEach((e, k) => {
-    var __counter = 0;
+    var __counter = [0, 0];
     const bar = multibar.create(qtd_longitudes, 0);
     progressbars[k] = bar;
 
@@ -575,56 +282,75 @@ function main() {
     })())
       .on('message', (msg) => {
         ((progress) => {
-          if (!is_response_from_child(msg, false)) {
+          if (
+            (typeof msg !== 'object') ||
+            (!has(msg, 'id'))
+          ) {
             return;
           }
 
-          if (msg.hasOwnProperty("error")) {
-            console.error("Child '", k, "' exited with code:", msg.error);
+          if (has(msg, "error")) {
+            console.error("Child '", k, "' exited with data:", msg.error);
             return terminate();
           }
 
+
+
           isStopedSeconds_bars[k] = 0;
 
-          if (is_response_from_child(msg, true)) {
+
+          if (has(msg, "increase") && msg.increase) {
             if (!processStarted[k]) {
               processStarted[k] = true;
               totalPerProcess.push(msg.segs * qtd_decpart_latitudes);
             }
 
-            __counter += msg.mymakes;
+            __counter[0] += options.decimal_lg_size;
+            __counter[1] += options.decimal_lg_size
 
-            if ((__counter % qtd_longitudes) === 0) {
-              __counter = 0;
+            if ((__counter[0] % qtd_longitudes) === 0) {
+              __counter[0] = 0;
             }
 
             __total += msg.mymakes;
           }
 
-          makes = mergeDeep(makes, msg.items);
+          if (has(msg, "finished") && (typeof msg.finished === "object")) {
+            isStopedSeconds_bars[k] === true;
+            progress(msg, [qtd_longitudes, qtd_per_process]);
+            bar.stop();
+            makes = mergeDeep(makes, msg.finished);
 
-          if (save_merged_json && ((__total % qtd_longitudes) == 0)) {
-            writedata(`${destPath}/full.temp.json`, JSON.stringify(makes, null, 2));
+            return;
           }
 
-          progress(msg, __counter);
+          try {
+            progress(msg, __counter);
+          } catch (e) {
 
-          if (__counter >= (segs * qtd_decpart_latitudes)) {
-            bar.stop();
           }
         })((msg, val) => {
           bar.update(
-            val,
+            val[0],
             {
-              k: k,
-              start: String(msg.start).padStart(3, " "),
-              skipped: (msg.skipped ? "SKIPPED" : "Built").padStart(7, " "),
-              step: msg.step,
-              astep: msg.astep,
-              segs: msg.segs,
-              lat: String(msg.lat.toFixed(precision)).padStart(pad_adress, ' '),
-              long: String(msg.long.toFixed(precision)).padStart(pad_adress, ' '),
-              index: String(k).padStart(3, ' ')
+              global_progress: val[1],
+              id: k,
+              write_return_status: (
+                typeof write_return_status === "object"
+                  ? "Built"
+                  : (
+                    write_return_status === 0
+                      ? SKIPPED
+                      : (
+                        write_return_status === 1
+                          ? "SEAN"
+                          : "???"
+                      )
+                  )
+              ),
+              first_lat: msg.first_lat,
+              latitude: msg.latitude,
+              longitude: msg.longitude,
             }
           );
         });
@@ -672,11 +398,13 @@ function main() {
     isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = 0;
 
     for (var k = 0; k < progressbars.length; k++) {
-      isStopedSeconds_bars[k]++;
+      if (typeof isStopedSeconds_bars[k] !== 'boolean') {
+        isStopedSeconds_bars[k]++;
 
-      if (isStopedSeconds_bars[k] > isFreezeSeconds) {
-        isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = isFreezeSeconds + 1;
-        progressbars[k].update(null);
+        if (isStopedSeconds_bars[k] > isFreezeSeconds) {
+          isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = isFreezeSeconds + 1;
+          progressbars[k].update(null);
+        }
       }
     }
   }, 1000);
