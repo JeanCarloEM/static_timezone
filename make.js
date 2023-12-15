@@ -4,8 +4,8 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { getCMDParam, has, mergeDeep } from './.maker/commom.js';
-import {makeLatitudes} from "./.maker/makeLatitudes.js"
+import { fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { makeLatitudes } from "./.maker/makeLatitudes.js"
 
 const startedTime = Date.now();
 
@@ -16,7 +16,6 @@ const ___pre_ = {
   , root: getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim()
 
   , save_json: getCMDParam('j', 'save-json', false)
-  , save_merged_json: getCMDParam('f', 'save-full-json', false)
   , save_raw: getCMDParam('s', 'save-raw', true)
   , qtd_process: getCMDParam('t', 'threads', Math.ceil(os.cpus().length))
   , inc_multiply: getCMDParam('m', 'multiply', 1)
@@ -25,6 +24,8 @@ const ___pre_ = {
   , lat_max: 84
   , long_min: -180
   , long_max: 180
+
+  , save_merged_json: true
 };
 
 const ___pre_2 = mergeDeep({
@@ -91,7 +92,7 @@ process.on('message', (msg) => {
       let send = {
         id: id,
         first_lat: first_lat,
-        latitude: latitude.toFixed(precision),
+        latitude: latitude.toFixed(options.precision),
         longitude: long_int_part,
         write_return_status: write_return_status
       };
@@ -145,8 +146,8 @@ function main() {
   var processStarted = (Array(options.qtd_process)).fill(false);
   var totalPerProcess = [];
 
-  if (options.save_merged_json && fs.existsSync(`${options.destPath}/full.temp.json`)) {
-    makes = JSON.parse(fs.readFileSync(`${options.destPath}/full.temp.json`, 'ascii'));
+  if (options.save_merged_json && fexists(`${options.destPath}/full.temp.json`)) {
+    makes = JSON.parse(fread(`${options.destPath}/full.temp.json`));
   }
 
   console.log("");
@@ -202,7 +203,7 @@ function main() {
               longitude
             }
     */
-    format: (options, params, values) => {
+    format: function (options, params, values) {
       function getVal(x) {
         if (has(values, x)) {
           return values[x];
@@ -232,11 +233,58 @@ function main() {
         ) + colors.gray(unok.padStart(size - completed, unok));
       }
 
+      function progressText(isMain, ctts) {
+        return (
+          (
+            isMain
+              ? "{id}: |{gbar}| {percent}%, {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+              : "{id}: |{gbar}| {percent}%, {completed}/{total}, fisrt: {fisrt} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
+          )
+            .replace(
+              /\{([^\}\{ ]+)\}/g,
+              (s, key) => {
+                key = key.toLowerCase();
+
+                if (!has(ctts, key)) {
+                  if (key == "gbar") {
+                    return newBar(false, "???", 0, options.barsize);
+                  }
+
+                  if (key == "pbar") {
+                    return newBar(false, "???", 0, Math.round(options.barsize / 2));
+                  }
+
+
+                  if (["lat", "long", "p_completed", "completed"].indexOf(key) >= 0) {
+                    return 0;
+                  }
+
+                  if (["percent", "p_percent"].indexOf(key) >= 0) {
+                    return (0).toFixed(2).toLocaleString("pt-BR");
+                  }
+
+                  return "???";
+                }
+
+                return ctts[key];
+              }
+            )
+        )
+      };
+
+      if (!values || JSON.stringify(values) == "{}") {
+        values = this.latest_values;
+      }
+
+      this.latest_values = values;
+
+      if (!values) return progressText(false, {});
+
       const id = (getVal('id') !== "" && getVal('id') >= 0)
         ? getVal('id')
         : isStopedSeconds_bars.length - 1;
 
-      const isMain = (id === (isStopedSeconds_bars.length - 1));
+      const isMain = id < 0;
 
       const main_p_size = options.barsize;
       const step_p_size = options.barsize;
@@ -259,70 +307,9 @@ function main() {
         ms_by_item = ms_by_item / runtime_byitem_calcs.length;
         remaining = secondsFormated(Math.round(ms_by_item * (params.total - params.value)));
         ms_by_item = String(ms_by_item.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
-      } else {
-        const makestep = (getVal('step') * params.total) + params.value;
-        process_p = String((makestep / stepmax * 100).toFixed(2)).padStart(6, " ");
       }
 
-      let rr = `${getVal('id')}: |${gbar}| ` + (
-        isMain
-          ? [
-            String(((params.progress) * 100).toFixed(4)).padStart(9, " "),
-            "% ▐",
-            ms_by_item,
-            "s/item ▐ Elapsed:",
-            String(lapse).padStart(12, " "),
-            "| Remaining: ",
-            (String(remaining).padStart(12, " ")),
-            "▐",
-            ((params.value)).toLocaleString("pt-BR").padStart(((params.total)).toLocaleString("pt-BR").length, " "),
-            "/",
-            ((params.total)).toLocaleString("pt-BR")
-          ].join(' ')
-
-          : [
-            String(Math.round((global_progress) * 100)).padStart(3, " "),
-            "% /",
-            process_p,
-            "% ▐",
-            getVal('start'),
-            "→",
-            getVal('latitude').padStart(1 + 3 + 1 + precision, " "),
-            "/",
-            getVal('longitude').toFixed(0).padStart(1 + 3 + 1 + precision, " "),
-            ",",
-            (
-              ((x) => {
-                return (
-                  typeof x === "object"
-                    ? "Built"
-                    : (
-                      x === 0
-                        ? colors.bgBlue("SKIPPED")
-                        : (
-                          x === 1
-                            ? colors.bgGreen("SEAN")
-                            : colors.bgRedBright("???")
-                        )
-                    )
-                )
-              })(getVal('write_return_status'))
-            ),
-            "▐ Longitude Progress:",
-            getVal('segs').toFixed(2),
-            " step:",
-            "|",
-            pbar,
-            "|",
-            String(((params.progress) * 100).toFixed(4)).padStart(9, " "),
-            ",",
-            ((params.value)).toLocaleString("pt-BR").padStart(p_total.length, " "),
-            "/",
-            ((params.total)).toLocaleString("pt-BR")
-          ].join(" ")
-      );
-
-      return (isMain ? colors.bgBlack : colors.bgBlack)(rr);
+      return;
     }
 
   }, cliProgress.Presets.shades_grey);
@@ -440,7 +427,7 @@ function main() {
    */
   intervalo = setInterval(() => {
     if (!bar_total) {
-      if (totalPerProcess.length == qtd_process) {
+      if (totalPerProcess.length == options.qtd_process) {
         let sum = 0;
 
         for (let i = 0; i < totalPerProcess.length; i++) {
@@ -468,7 +455,7 @@ function main() {
       console.log("");
       save_merged_json &&
         writedata(`${destPath} /full.json`, JSON.stringify(makes, null, 0)) &&
-        fs.unlinkSync(`${destPath}/full.temp.json`);
+        delfile(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
       return;
     }

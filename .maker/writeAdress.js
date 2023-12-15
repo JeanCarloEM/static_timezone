@@ -1,6 +1,4 @@
-import { find } from 'geo-tz';
-import { has, fexists, fread, fsize } from "./commom.js";
-import { isSea } from 'is-sea';
+import { isOcean, getTZ, has, fexists, fread, fsize } from "./commom.js";
 
 /**
  *
@@ -10,7 +8,7 @@ import { isSea } from 'is-sea';
  * @param {*} fail
  * @returns
  */
-function checkNeedWrite(fpath, zone, isjson, fail) {
+function checkNeedReIndividualFileWrite(fpath, zone, isjson, fail) {
   if (fexists(`${fpath}`)) {
     let content = " ";
 
@@ -45,7 +43,7 @@ export function writeAdress(
   fail
 ) {
   /** IGNORE OCEAN */
-  if (isSea.get(latitude, longitude)) {
+  if (isOcean(latitude, longitude)) {
     return 1; // in ocean
   }
 
@@ -69,25 +67,17 @@ export function writeAdress(
         : false
     );
 
-    const calczone = (find(latitude, longitude) + "").trim();
+    const calczone = getTZ(latitude, longitude);
 
     return (
-      (presaved && (presaved !== calczone))
-        ? calczone
-        : (
-          // need save individual?
-          (!options.save_raw && !options.save_json)
-            // NO need save individual?
-            ? false
-            // need save individual
-            : (
-              // is divergent content or invalid individual saved?
-              (options.save_raw && checkNeedWrite(`${full_path}`, false, fail)) ||
-              (options.save_json && checkNeedWrite(`${full_path}.json`, true, fail))
-            ) ? calczone
-              // dont need save
-              : false
+      presaved
+        ? (
+          (presaved !== calczone)
+            ? calczone
+            : false
         )
+        : calczone
+
     );
   })());
 

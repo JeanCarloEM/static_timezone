@@ -1,19 +1,22 @@
 import fs from 'fs';
 import minimist from 'minimist';
+import { find } from 'geo-tz';
+import PATH from "path"
+import { TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2))
 
 export function has(target, k) {
-  return target.hasOwnProperty(k) && target[k] !== "undefined";
+  return (typeof target === "object") && target.hasOwnProperty(k) && target[k] !== "undefined";
 }
 
 
-export function fexists(path) {
-  return fs.existsSync(`${path}`)
+export function fexists(fpath) {
+  return fs.existsSync(`${fpath}`)
 }
 
-export function fread(path, encode) {
-  return fs.readFileSync(path, encode)
+export function fread(fpath, encode) {
+  return fs.readFileSync(fpath, encode)
 }
 
 export function fsize(fpath) {
@@ -83,13 +86,13 @@ export function loopDecimalPart(
  * @param {*} fpath
  */
 export function writedata(fpath, ctt) {
-  const dir = path.dirname(fpath);
+  const dir = PATH.dirname(fpath);
   !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(`${fpath}`, ctt, 'ascii');
 }
 
-export function delfile(path) {
-  fs.unlinkSync(path);
+export function delfile(fpath) {
+  (fexists(fpath)) && fs.unlinkSync(fpath);
 }
 
 
@@ -102,7 +105,7 @@ export function delfile(path) {
  */
 export function getCMDParam(abrev, fullname, defval) {
   const __get = (x) => {
-    if (_argv.hasOwnProperty(x)) {
+    if (has(_argv, x)) {
       return _argv[x];
     }
 
@@ -123,4 +126,18 @@ export function getCMDParam(abrev, fullname, defval) {
       ? __get(fullname)
       : false
   );
+}
+
+export function isOcean(latitude, longitude, fail) {
+  return false;
+}
+
+export function getTZ(latitude, longitude) {
+  const r = (find(latitude, longitude) + "").trim();
+
+  if (TZs.indexOf(r) < 0) {
+    return false;
+  }
+
+  return r;
 }

@@ -51,20 +51,26 @@ export function makeLatitudes(
   let first_retored_runtime = true;
   let latest_write_return = {}
 
+  let last_latitude = first_lat;
+  let last_long_int_part = (
+    first_retored_runtime
+      ? saved_pos_data.longitude_int_part
+      : false
+  );
+
   for (var lt = start_lat.toFixed(0); lt < options.lat_max; lt += options.qtd_process) {
     makeLat(
       options,
       lt,
       (start_lat % 1) * options.precision,
-      (
-        first_retored_runtime
-          ? saved_pos_data.longitude_int_part
-          : false
-      ),
+      last_long_int_part,
       allItems,
       path,
       fail,
       (batch_items, latitude, long_int_part) => {
+        last_latitude = latitude;
+        last_long_int_part = long_int_part;
+
         allItems = mergeDeep(allItems, batch_items);
 
         /* WRITE TEMP MERGED JSON */
@@ -81,7 +87,7 @@ export function makeLatitudes(
           params: options
         }));
 
-        clback(id, first_lat, latitude, long_int_part, actual_write_return, false);
+        clback(id, first_lat, latitude, long_int_part, latest_write_return, false);
       },
       (write_return) => {
         if (typeof write_return === "boolean") {
@@ -89,7 +95,7 @@ export function makeLatitudes(
         }
 
         if ((typeof write_return) !== (typeof latest_write_return)) {
-          actual_write_return = write_return;
+          latest_write_return = write_return;
           clback(id, first_lat, latitude, long_int_part, write_return, true);
         }
       }
@@ -99,9 +105,9 @@ export function makeLatitudes(
   }
 
   writedata(saved_pos_path_finished, JSON.stringify(allItems, null, 0));
-  delfile(saved_pos_path_tmp);
+  delfile(saved_pos_path_tmp)
 
-  clback(id, first_lat, latitude, long_int_part, actual_write_return, {
+  clback(id, first_lat, last_latitude, last_long_int_part, latest_write_return, {
     finished: allItems
   });
 }
