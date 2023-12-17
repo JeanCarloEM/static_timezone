@@ -1,6 +1,11 @@
-import { checkIsIncludeInLins, delfile, isOcean, getTZ, has, fexists, fread, fsize } from "./commom.js";
+import { checkIsIncludeInLins as checkIsIncludeInList, delfile, isOcean, getTZ, has, fexists, fread, fsize } from "./commom.js";
 import { forceInclude } from "./forceInclude.js"
 import { forceIgnore } from "./forceIgnore.js"
+
+export const adress_skipped = 0;
+export const adress_isocean = 1;
+export const adress_isforced_ignore = 3;
+export const adress_isinvalid_tz = 2;
 
 /**
  *
@@ -48,20 +53,20 @@ export function writeAdress(
   const lgpath = String(longitude.toFixed(options.precision_lg)).replace(/[,\.]/g, '/');
   const full_path = `${path}/lat/${ltpath}/long/${lgpath}`;
 
+  const is_ocean = isOcean(latitude, longitude);
+  const is_forced_Ignored = !is_ocean && checkIsIncludeInList(latitude, longitude, forceIgnore);
+
   /** IGNORE OCEAN */
   if (
-    (
-      isOcean(latitude, longitude) ||
-      checkIsIncludeInLins(latitude, longitude, forceIgnore)
-    ) &&
+    (is_ocean || is_forced_Ignored) &&
     // forceInclude takes precedence over other options
-    !checkIsIncludeInLins(latitude, longitude, forceInclude)
+    !checkIsIncludeInList(latitude, longitude, forceInclude)
   ) {
     /** delete if  file is before created and unecesary*/
     delfile(`${full_path}.json`);
     delfile(`${full_path}`);
 
-    return 1; // in ocean
+    return is_ocean ? adress_isocean : adress_isforced_ignore;
   }
 
   /**
@@ -81,6 +86,10 @@ export function writeAdress(
     );
 
     const calczone = getTZ(latitude, longitude);
+
+    if (calczone === false) {
+      return adress_isinvalid_tz;
+    }
 
     return (
       presaved
@@ -115,5 +124,5 @@ export function writeAdress(
     };
   }
 
-  return 0;// is skipped
+  return adress_skipped;// is skipped
 }

@@ -142,7 +142,7 @@ export function getTZ(latitude, longitude) {
   return r;
 }
 
-export function checkIsIncludeInLins(latitude, longitude, list) {
+export function checkIsIncludeInList(latitude, longitude, list) {
   for (let k = list; k < list.length; k++) {
     if (
       (
