@@ -141,3 +141,30 @@ export function getTZ(latitude, longitude) {
 
   return r;
 }
+
+export function checkIsIncludeInLins(latitude, longitude, list) {
+  for (let k = list; k < list.length; k++) {
+    if (
+      (
+        (list[k].length === 2) &&
+        (list[k][0] === latitude) &&
+        (list[k][1] === longitude)
+      ) ||
+      (
+        (list[k].length === 4) &&
+
+        /** top->dow (latitude) do maior para menos (contrário do consenso) */
+        (latitude <= list[k][0]) &&
+        /** left->right (longitude) do menor para o maior */
+        (longitude >= list[k][1]) &&
+
+        (latitude >= list[k][2]) &&
+        (longitude <= list[k][3])
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}

@@ -1,4 +1,6 @@
-import { isOcean, getTZ, has, fexists, fread, fsize } from "./commom.js";
+import { checkIsIncludeInLins, delfile, isOcean, getTZ, has, fexists, fread, fsize } from "./commom.js";
+import { forceInclude } from "./forceInclude.js"
+import { forceIgnore } from "./forceIgnore.js"
 
 /**
  *
@@ -42,14 +44,25 @@ export function writeAdress(
   path,
   fail
 ) {
-  /** IGNORE OCEAN */
-  if (isOcean(latitude, longitude)) {
-    return 1; // in ocean
-  }
-
   const ltpath = String(latitude.toFixed(options.precision_lt)).replace(/[,\.]/, '/');
   const lgpath = String(longitude.toFixed(options.precision_lg)).replace(/[,\.]/g, '/');
   const full_path = `${path}/lat/${ltpath}/long/${lgpath}`;
+
+  /** IGNORE OCEAN */
+  if (
+    (
+      isOcean(latitude, longitude) ||
+      checkIsIncludeInLins(latitude, longitude, forceIgnore)
+    ) &&
+    // forceInclude takes precedence over other options
+    !checkIsIncludeInLins(latitude, longitude, forceInclude)
+  ) {
+    /** delete if  file is before created and unecesary*/
+    delfile(`${full_path}.json`);
+    delfile(`${full_path}`);
+
+    return 1; // in ocean
+  }
 
   /**
    * get zone from saved or generated
@@ -85,11 +98,11 @@ export function writeAdress(
   if (zone) {
     try {
       if (options.save_json) {
-        writedata(`${__dest}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+        writedata(`${full_path}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
       }
 
       if (options.save_raw) {
-        writedata(`${__dest}`, `${zone}`);
+        writedata(`${full_path}`, `${zone}`);
       }
     } catch (e) {
       return typeof fail === 'function' && fail(e, "writeAdress", 1);
