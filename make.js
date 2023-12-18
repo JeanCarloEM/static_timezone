@@ -29,14 +29,14 @@ const ___pre_ = {
 };
 
 const ___pre_2 = mergeDeep({
-  decimal_lt_size: Math.pow(10, ___pre_.recision)
+  decimal_lt_size: Math.pow(10, ___pre_.precision)
   , decimal_lg_size: Math.pow(10, ___pre_.precision)
   , lat_range: (___pre_.lat_max - ___pre_.lat_min)
   , long_range: (___pre_.long_max - ___pre_.long_min)
 }, ___pre_);
 
 const ___pre_3 = mergeDeep({
-  segs: Math.ceil(___pre_2.at_range / ___pre_2.qtd_process)
+  segs: Math.ceil(___pre_2.lat_range / ___pre_2.qtd_process)
   , qtd_longitudes: ___pre_2.long_range * ___pre_2.decimal_lg_size
 }, ___pre_2);
 
@@ -135,6 +135,60 @@ function secondsFormated(s) {
   return `${d}, ${(String(h).padStart(2, "0"))}:${(String(m).padStart(2, "0"))}:${(String(s).padStart(2, "0"))}`;
 }
 
+function listOptions() {
+  const keys = Object.keys(options).sort();
+  let maxlen = 0;
+  let maxlen_content = 0;
+
+  keys.reduce(
+    (accumulator, currentValue) => {
+      maxlen = currentValue.length > maxlen ? currentValue.length : maxlen;
+      maxlen_content = options[currentValue].length > maxlen_content ? options[currentValue].length : maxlen_content;
+
+    }
+  );
+
+  console.log("\nOPTIONS:\n");
+
+  keys.reduce(
+    (a, atual) => {
+      const isbols = (typeof options[atual] == "boolean");
+      const isstr = (typeof options[atual] == "string");
+
+      console.log(" - " + atual.padEnd(maxlen, ".") + ": " +
+        (
+          (
+            isbols
+              ? (
+                options[atual]
+                  ? colors.greenBright
+                  : colors.redBright
+              )
+              : (
+                isstr
+                  ? colors.yellowBright
+                  : colors.cyanBright
+              )
+          )(
+            (
+              (typeof options[atual] == "number")
+                ? options[atual].toLocaleString("pt-BR")
+                : (
+                  isbols
+                    ? (options[atual] ? "TRUE" : "FALSE")
+                    : `'${options[atual]}'`
+                )
+            )
+              .padStart((maxlen_content > 16 ? 16 : maxlen_content) + 1, " ")
+          )
+        )
+      );
+    }
+  );
+
+  console.log("\n");
+}
+
 /**
  *
  */
@@ -150,20 +204,7 @@ function main() {
     makes = JSON.parse(fread(`${options.destPath}/full.temp.json`));
   }
 
-  console.log("");
-  console.log("Inicializando.");
-  console.log("");
-  console.log("Precisão...............: " + options.precision);
-  console.log("Incrementos............: " + (options.inc * options.inc_multiply));
-  console.log("Processos..............: " + options.qtd_process);
-  console.log("Latitudes por processo.: " + options.segs);
-  console.log("QTD Longitudes.........: " + options.qtd_longitudes.toLocaleString("pt-BR"));
-  console.log("QTD decimal Latitudes..: " + options.qtd_decpart_latitudes.toLocaleString("pt-BR"));
-  console.log("QTD por processo.......: " + options.qtd_per_process.toLocaleString("pt-BR"));
-  console.log("QTD total estimada.....: " + options.qtd_all.toLocaleString("pt-BR"));
-  console.log("Progress update on.....: " + options.update_count);
-  console.log("Save Path..............: " + options.root);
-  console.log("");
+  listOptions();
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
