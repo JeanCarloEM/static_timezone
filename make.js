@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 
 const startedTime = Date.now();
@@ -206,6 +206,16 @@ function main() {
 
   listOptions();
 
+  const progress_keys_padstr = {
+    first: options.precision + 1 + maxlength(options.lat_mim, options.lat_max)
+    , total: `${options.qtd_decpart_latitudes}`.length
+    , completed: `${options.qtd_decpart_latitudes}`.length
+    , gtotal: `${options.qtd_all}`.length
+    , gcompleted: `${options.qtd_all}`.length
+    , p_total: `${options.qtd_longitudes}`.length
+    , p_completed: `${options.qtd_longitudes}`.length
+  }
+
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
     hideCursor: true,
@@ -278,36 +288,40 @@ function main() {
         return (
           (
             isMain
-              ? "{id}: |{gbar}| {percent}%, {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
-              : "{id}: |{gbar}| {percent}%, {completed}/{total}, fisrt: {fisrt} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
+              ? "{id}: |{gbar}| {percent}%, {gcompleted}/{gtotal} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+              : "{id}: |{gbar}| {percent}%, {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
           )
             .replace(
               /\{([^\}\{ ]+)\}/g,
               (s, key) => {
                 key = key.toLowerCase();
 
-                if (!has(ctts, key)) {
-                  if (key == "gbar") {
-                    return newBar(false, "???", 0, options.barsize);
+                return ((() => {
+                  if (!has(ctts, key)) {
+                    if (key == "gbar") {
+                      return newBar(false, "???", 0, options.barsize);
+                    }
+
+                    if (key == "pbar") {
+                      return newBar(false, "???", 0, Math.round(options.barsize / 2));
+                    }
+
+
+                    if (["lat", "long", "p_completed", "completed"].indexOf(key) >= 0) {
+                      return 0;
+                    }
+
+                    if (["percent", "p_percent"].indexOf(key) >= 0) {
+                      return (0).toFixed(2).toLocaleString("pt-BR");
+                    }
+
+                    return "???";
                   }
 
-                  if (key == "pbar") {
-                    return newBar(false, "???", 0, Math.round(options.barsize / 2));
-                  }
+                  return ctts[key];
+                })() + "")
 
-
-                  if (["lat", "long", "p_completed", "completed"].indexOf(key) >= 0) {
-                    return 0;
-                  }
-
-                  if (["percent", "p_percent"].indexOf(key) >= 0) {
-                    return (0).toFixed(2).toLocaleString("pt-BR");
-                  }
-
-                  return "???";
-                }
-
-                return ctts[key];
+                  .padStart(has(progress_keys_padstr, key) ? progress_keys_padstr[key] : 0, " ");
               }
             )
         )
@@ -336,7 +350,6 @@ function main() {
 
       let lapse = "0, 00:00:00";
       let remaining = lapse;
-      let process_p = 0;
       let ms_by_item = 0;
 
       if (isMain) {
@@ -349,8 +362,24 @@ function main() {
         remaining = secondsFormated(Math.round(ms_by_item * (params.total - params.value)));
         ms_by_item = String(ms_by_item.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
       }
-
-      return;
+      /**
+       "{id}: |{gbar}| {percent}%, {gcompleted}/{gtotal} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+       "{id}: |{gbar}| {percent}%, {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
+       */
+      return progressText(isMain, {
+        id: id,
+        gbar: gbar,
+        pbar: pbar,
+        lapse: lapse,
+        ms: ms_by_item,
+        elapsed: lapse,
+        remaining: remaining,
+        completed: params.value,
+        total: params.total,
+        gcompleted: params.value,
+        gtotal: params.total,
+        percent: global_progress.toFixed(isMain ? 4 : 2).toLocaleString("pt-BR")
+      });
     }
 
   }, cliProgress.Presets.shades_grey);

@@ -6,6 +6,28 @@ import { TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2))
 
+export function maxlength(...args) {
+  let len = 0;
+  args.reduce(
+    (a, c) => {
+      len = len > `${c}`.length ? len : `${c}`.length
+    }
+  );
+
+  return len;
+}
+
+export function minlength(...args) {
+  let len = `${args[0]}`.length;
+  args.reduce(
+    (a, c) => {
+      len = len < `${c}`.length ? len : `${c}`.length
+    }
+  );
+
+  return len;
+}
+
 export function has(target, k) {
   return (typeof target === "object") && target.hasOwnProperty(k) && target[k] !== "undefined";
 }
