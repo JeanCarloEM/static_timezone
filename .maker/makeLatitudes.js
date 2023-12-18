@@ -1,7 +1,7 @@
 import { writeBatch } from "./writeBatch.js";
 
 import { makeLat } from "./makeLat.js";
-import { delfile, writedata, mergeDeep, has, fexists, fread, fsize } from "./commom.js";
+import { checkParameters, delfile, writedata, mergeDeep, has, fexists, fread, fsize } from "./commom.js";
 import { force_update_at } from "./writeBatch.js";
 
 /**
@@ -35,6 +35,32 @@ export function makeLatitudes(
   fail,
   clback
 ) {
+  checkParameters(
+    fail,
+    'makeLatitudes',
+    [
+      'options',
+      'id',
+      'path',
+      'fail',
+      'clback'
+    ],
+    [
+      'object',
+      'number',
+      'string',
+      'function',
+      'function'
+    ],
+    [
+      options,
+      id,
+      path,
+      fail,
+      clback
+    ]
+  );
+
   const saved_pos_path = `${path}/${id}.process.json`;
   const saved_pos_path_tmp = `${path}/${id}.tmp.data.json`;
   const saved_pos_path_finished = `${path}/${id}.finidhed.data.json`;
@@ -58,7 +84,7 @@ export function makeLatitudes(
       : false
   );
 
-  for (var lt = start_lat.toFixed(0); lt < options.lat_max; lt += options.qtd_process) {
+  for (var lt = Math.round(start_lat); lt < options.lat_max; lt += options.qtd_process) {
     makeLat(
       options,
       lt,

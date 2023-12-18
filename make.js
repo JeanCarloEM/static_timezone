@@ -74,10 +74,9 @@ process.on('message', (msg) => {
 
   makeLatitudes(
     options,
-    msg.id,
+    msg.start,
     options.destPath,
-    (msg, funcName, code) => {
-      console.error(funcName, code, msg);
+    (_msg, funcName, code) => {
       process.send({
         error: {
           funcName: funcName,
@@ -86,7 +85,7 @@ process.on('message', (msg) => {
         }
       });
 
-      terminate();
+      throw new Error(`${colors.yellow(code)} | ${colors.bgRed(" " + funcName + " ")}: ${colors.redBright(_msg)}\n` + JSON.stringify(msg));
     },
     (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished) => {
       let send = {
@@ -398,6 +397,7 @@ function main() {
       return nn;
     })())
       .on('message', (msg) => {
+        //console.log("MSG:", msg);
         ((progress) => {
           if (
             (typeof msg !== 'object') ||
@@ -460,7 +460,7 @@ function main() {
 
           if (has(msg, "finished") && (typeof msg.finished === "object")) {
             isStopedSeconds_bars[k] === true;
-            progress(msg, [qtd_longitudes, qtd_per_process]);
+            progress(msg, [options.qtd_longitudes, options.qtd_per_process]);
             bar.stop();
             makes = mergeDeep(makes, msg.finished);
 
@@ -478,7 +478,6 @@ function main() {
             {
               global_makes: val[1],
               id: k,
-              write_return_status: write_return_status,
               first_lat: msg.first_lat,
               latitude: msg.latitude,
               longitude: msg.longitude,

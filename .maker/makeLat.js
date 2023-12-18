@@ -1,3 +1,5 @@
+import { checkParameters, loopDecimalPart } from "./commom.js";
+
 export function makeLat(
   options,
   lt,
@@ -9,6 +11,44 @@ export function makeLat(
   callback,
   write_return_status
 ) {
+  checkParameters(
+    fail,
+    'makeLat',
+    [
+      'options',
+      'lt',
+      'lt_dec',
+      'first_restored_long_start',
+      'allItems',
+      'path',
+      'fail',
+      'callback',
+      'write_return_status'
+    ],
+    [
+      "object",
+      "number",
+      "number",
+      "number",
+      "object",
+      "string",
+      "function",
+      "function",
+      "function"
+    ],
+    [
+      options,
+      lt,
+      lt_dec,
+      first_restored_long_start,
+      allItems,
+      path,
+      fail,
+      callback,
+      write_return_status
+    ]
+  );
+
   loopDecimalPart(
     options.decimal_lt_size,
     options.inc_lt_multiply,
@@ -22,7 +62,7 @@ export function makeLat(
             ? first_restored_long_start
             : options.long_min
         );
-        lg < long_max;
+        lg < options.ong_max;
         lg++
       ) {
         first_restored_long_start = false;

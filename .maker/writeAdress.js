@@ -1,4 +1,5 @@
 import {
+  checkParameters,
   checkIsIncludeInList,
   delfile,
   isOcean,
@@ -58,6 +59,34 @@ export function writeAdress(
   path,
   fail
 ) {
+  checkParameters(
+    fail, 'writeAdress',
+    [
+      'options',
+      'latitude',
+      'longitude',
+      'allItems',
+      'path',
+      'fail'
+    ],
+    [
+      'object',
+      'number',
+      'number',
+      'object',
+      'string',
+      "function"
+    ],
+    [
+      options,
+      latitude,
+      longitude,
+      allItems,
+      path,
+      fail
+    ]
+  );
+
   const ltpath = String(latitude.toFixed(options.precision_lt)).replace(/[,\.]/, '/');
   const lgpath = String(longitude.toFixed(options.precision_lg)).replace(/[,\.]/g, '/');
   const full_path = `${path}/lat/${ltpath}/long/${lgpath}`;

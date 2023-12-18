@@ -4,7 +4,50 @@ import { find } from 'geo-tz';
 import PATH from "path"
 import { TZs } from "./TZs.js"
 
-const _argv = minimist(process.argv.slice(2))
+const _argv = minimist(process.argv.slice(2));
+
+export function checkParameters(fail, identify, names, types, args) {
+  if (
+    typeof identify !== "string" ||
+    !Array.isArray(names) ||
+    !Array.isArray(types) ||
+    !Array.isArray(args)
+  ) {
+    console.log("\n\ncheckParameters PARAMTER:\n", identify, names, types, args, "\n\n");
+
+    if (typeof fail === "function") {
+      fail('[checkParameters] invalid parameters types.', 'checkParameters', 0);
+    }
+
+    throw '[checkParameters] invalid parameters types.';
+  }
+
+  let throws = false;
+
+  if (args.length !== names.length) {
+    throws = `Divergent lenghts, ${args.length} arguments provided, expected ${names.length}.`;
+  }
+
+  for (let k = 0; k < args.length; k++) {
+    if (typeof args[k] === "undefined") {
+      throws = `${k}º argument ('${names[k]}') is 'undefined'.`;
+      break;
+    } else
+
+      if (types && types[k] && typeof args[k] !== types[k]) {
+        throws = `${k}º argument, ('${names[k]}') is '${typeof args[k]}', expected '${types[k]}'.`;
+        break;
+      }
+  }
+
+  if (throws) {
+    if (typeof fail === "function") {
+      fail(throws, identify, "commom::checkParameters");
+    }
+
+    throw new Error(`[${identify}] checkParameters:: ${throws}`);
+  }
+}
 
 export function maxlength(...args) {
   let len = 0;

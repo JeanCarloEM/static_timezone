@@ -1,5 +1,5 @@
-import { writeAdress }  from "./writeAdress.js";
-import { mergeDeep, loopDecimalPart }  from "./commom.js";
+import { writeAdress } from "./writeAdress.js";
+import { checkParameters, mergeDeep, loopDecimalPart } from "./commom.js";
 
 export const force_update_at = 10;
 
@@ -12,6 +12,37 @@ export function writeBatch(
   fail,
   write_return_status_OrForceUpdate
 ) {
+  checkParameters(
+    fail, 'writeBatch',
+    [
+      'options',
+      'latitude',
+      'long',
+      'allItems',
+      'path',
+      'fail',
+      'write_return_status_OrForceUpdate'
+    ],
+    [
+      'object',
+      'number',
+      'number',
+      'object',
+      'string',
+      "function",
+      "function"
+    ],
+    [
+      options,
+      latitude,
+      long,
+      allItems,
+      path,
+      fail,
+      write_return_status_OrForceUpdate
+    ]
+  );
+
   let batch_items = {};
   let latest_write_return = {}
   let loop_count = 0;
