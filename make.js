@@ -12,7 +12,7 @@ const startedTime = Date.now();
 const ___pre_ = {
   precision: getCMDParam('p', 'precision', 2)
   , update_count: getCMDParam('u', 'update', 100)
-  , isFreezeSeconds: getCMDParam('u', 'update', 20)
+  , isFreezeSeconds: getCMDParam('u', 'update', 15)
   , root: getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim()
 
   , save_json: getCMDParam('j', 'save-json', false)
@@ -33,6 +33,10 @@ const ___pre_2 = mergeDeep({
   , decimal_lg_size: Math.pow(10, ___pre_.precision)
   , lat_range: (___pre_.lat_max - ___pre_.lat_min)
   , long_range: (___pre_.long_max - ___pre_.long_min)
+  , inc_lg_multiply: ___pre_.inc_multiply
+  , inc_lt_multiply: ___pre_.inc_multiply
+  , precision_lt: ___pre_.precision
+  , precision_lg: ___pre_.precision
 }, ___pre_);
 
 const ___pre_3 = mergeDeep({
@@ -85,7 +89,7 @@ process.on('message', (msg) => {
         }
       });
 
-      throw new Error(`${colors.yellow(code)} | ${colors.bgRed(" " + funcName + " ")}: ${colors.redBright(_msg)}\n` + JSON.stringify(msg));
+      throw new Error(`${colors.bgBlueBright(` Process ${msg.start} `)} -> ${colors.yellow(`[${code}]`)} | ${colors.bgRed(" " + funcName + " ")}: ${colors.redBright(_msg)}\n` + JSON.stringify(msg));
     },
     (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished) => {
       let send = {
@@ -221,7 +225,7 @@ function main() {
     autopadding: true,
     autopaddingChar: " ",
     emptyOnZero: true,
-    forceRedraw: true,
+    forceRedraw: false,
     barsize: 20,
     /*
       parametros:
@@ -416,7 +420,7 @@ function main() {
           if (has(msg, "increase") && msg.increase) {
             if (!processStarted[k]) {
               processStarted[k] = true;
-              totalPerProcess.push(msg.segs * qtd_decpart_latitudes);
+              totalPerProcess.push(msg.segs * options.qtd_decpart_latitudes);
             }
 
             if (typeof msg.increase === "numeric") {
@@ -449,7 +453,7 @@ function main() {
               ? __counter.comleted.global_val
               : __counter.forced.global_val;
 
-            if ((part_val % qtd_longitudes) === 0) {
+            if ((part_val % options.qtd_longitudes) === 0) {
               if (__counter.comleted.part_val > __counter.forced.part_val) {
                 __counter.comleted.part_val = 0;
               } else {
@@ -511,15 +515,15 @@ function main() {
       return;
     }
 
-    const tot = __total.comleted.part_val > __total.forced.part_val
-      ? __total.comleted.part_val
+    const tot = __total.completed.part_val > __total.forced.part_val
+      ? __total.completed.part_val
       : __total.forced.part_val
 
     bar_total.update(tot, {
       index: -1
     });
 
-    if (tot >= qtd_all) {
+    if (tot >= options.qtd_all) {
       bar_total.stop();
       console.log("");
       save_merged_json &&
@@ -535,8 +539,8 @@ function main() {
       if (typeof isStopedSeconds_bars[k] !== 'boolean') {
         isStopedSeconds_bars[k]++;
 
-        if (isStopedSeconds_bars[k] > isFreezeSeconds) {
-          isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = isFreezeSeconds + 1;
+        if (isStopedSeconds_bars[k] > options.isFreezeSeconds) {
+          isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = options.isFreezeSeconds + 1;
           progressbars[k].update(null);
         }
       }

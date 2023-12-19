@@ -7,3 +7,4 @@ temp.json
 node_modules
 make.bat
 db/
+.process

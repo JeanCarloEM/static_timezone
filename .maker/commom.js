@@ -130,13 +130,14 @@ export function loopDecimalPart(
   start_at
 ) {
   for (
-    var decimal = Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)).toFixed(0);
+    var decimal = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)));
     decimal >= 0;
     decimal -= multiply
   ) {
-    const item = (intpart >= 0 ? 1 : - 1) * (Math.abs(intpart) + (decimal / decimal_size));
+    const item = (intpart >= 0 ? 1. : - 1.) * (Math.abs(parseFloat(intpart)) + (decimal / decimal_size));
+
     if ((item < min) || (item > max)) {
-      return;
+      continue;
     }
 
     clback(
@@ -144,6 +145,10 @@ export function loopDecimalPart(
       decimal
     );
   }
+}
+
+export function dirname(x) {
+  return PATH.dirname(x);
 }
 
 /**

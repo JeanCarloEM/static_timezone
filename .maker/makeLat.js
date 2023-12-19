@@ -1,4 +1,5 @@
 import { checkParameters, loopDecimalPart } from "./commom.js";
+import {writeBatch} from "./writeBatch.js"
 
 export function makeLat(
   options,
@@ -62,7 +63,7 @@ export function makeLat(
             ? first_restored_long_start
             : options.long_min
         );
-        lg < options.ong_max;
+        lg < options.long_max;
         lg++
       ) {
         first_restored_long_start = false;

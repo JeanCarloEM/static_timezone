@@ -7,7 +7,8 @@ import {
   has,
   fexists,
   fread,
-  fsize
+  fsize,
+  writedata
 } from "./commom.js";
 import { forceInclude } from "./forceInclude.js"
 import { forceIgnore } from "./forceIgnore.js"
@@ -118,7 +119,7 @@ export function writeAdress(
         has(allItems[`${latitude}`], `${longitude}`)
       )
         // saved
-        ? allItems[`${latitude}`][`${longitude}`].trim()
+        ? `${allItems[`${latitude}`][`${longitude}`]}`.trim()
         // not Saved
         : false
     );
@@ -149,15 +150,15 @@ export function writeAdress(
       }
 
       if (options.save_raw) {
-        writedata(`${full_path}`, `${zone}`);
+        writedata(`${full_path}.txt`, `${zone}`);
       }
     } catch (e) {
       return typeof fail === 'function' && fail(e, "writeAdress", 1);
     }
 
     return {
-      [latitude]: {
-        [longitude]: zone
+      [latitude.toFixed(options.precision_lt).padStart(options.precision_lt + 1 + 3 + 1)]: {
+        [longitude.toFixed(options.precision_lg).padStart(options.precision_lg + 1 + 3 + 1)]: zone
       }
     };
   }

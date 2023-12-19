@@ -84,8 +84,7 @@ export function writeBatch(
         (typeof write_return_status_OrForceUpdate === 'function') &&
         write_return_status_OrForceUpdate(true);
 
-
-      batch_items = mergeDeep(batch_items, typeof r == 'object' ? r : {});
+      mergeDeep(batch_items, typeof r == 'object' ? r : {});
     }
   );
 
