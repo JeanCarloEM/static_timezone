@@ -233,8 +233,8 @@ function main() {
   listOptions();
 
   console.log(`Estimated disk occupancy for cluster=512b: ` + (((options.qtd_all * 512) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
-  console.log(`Estimated disk occupancy for cluster=1K..: ` + (((options.qtd_all * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
-  console.log(`Estimated disk occupancy for cluster=2K..: ` + (((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
+  console.log(`Estimated disk occupancy for cluster=1K..: ` + (((options.qtd_all * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
+  console.log(`Estimated disk occupancy for cluster=2K..: ` + (((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
   console.log(`Estimated disk occupancy for cluster=4K..: ` + (((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
 
   const progress_keys_padstr = {
