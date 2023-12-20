@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { TZs } from "./.maker/TZs.js"
 
@@ -61,20 +61,9 @@ const ___pre_5 = mergeDeep({
 }, ___pre_4);
 
 const options = mergeDeep({
-  padstr_total_by_process: (___pre_5.qtd_all)
-    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-    .length,
-  padstr_total_all: (___pre_5.qtd_all)
-    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
-    .length,
+  padstr_total_by_process: localNumberFormat(___pre_5.qtd_by_process, 2).length,
+  padstr_total_all: localNumberFormat(___pre_5.qtd_all, 2).length,
 }, ___pre_5);
-
-
-
-
-
-
-
 
 /**
  *
@@ -198,7 +187,7 @@ function listOptions() {
           )(
             (
               (typeof options[atual] == "number")
-                ? options[atual].toLocaleString("pt-BR")
+                ? localNumberFormat(options[atual])
                 : (
                   isbols
                     ? (options[atual] ? "TRUE" : "FALSE")
@@ -232,10 +221,10 @@ function main() {
 
   listOptions();
 
-  console.log(`Estimated disk occupancy for cluster=512b: ` + (((options.qtd_all * 512) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
-  console.log(`Estimated disk occupancy for cluster=1K..: ` + (((options.qtd_all * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
-  console.log(`Estimated disk occupancy for cluster=2K..: ` + (((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
-  console.log(`Estimated disk occupancy for cluster=4K..: ` + (((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
+  console.log(`Estimated disk occupancy for cluster=512b: ` + localNumberFormat((((options.qtd_all * 512) / (1024 * 1024 * 1024))), 2) + "Gb");
+  console.log(`Estimated disk occupancy for cluster=1K..: ` + localNumberFormat((((options.qtd_all * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
+  console.log(`Estimated disk occupancy for cluster=2K..: ` + localNumberFormat((((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
+  console.log(`Estimated disk occupancy for cluster=4K..: ` + localNumberFormat((((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb\n");
 
   const progress_keys_padstr = {
     first: "000.".length + options.precision_lt
@@ -249,12 +238,8 @@ function main() {
     , lat: "000.".length + options.precision_lt
     , long: "000.".length + options.precision_lg
     , p_percent: "000.00".length
-    , p_total: options.qtd_longitudes
-      .toLocaleString("pt-BR")
-      .length
-    , p_completed: options.qtd_longitudes
-      .toLocaleString("pt-BR")
-      .length
+    , p_total: localNumberFormat(options.qtd_longitudes).length
+    , p_completed: localNumberFormat(options.qtd_longitudes).length
   };
 
   const multibar = new cliProgress.MultiBar({
@@ -354,28 +339,26 @@ function main() {
                       }
 
                       if (key == "percent") {
-                        return (
+                        return localNumberFormat((
                           has(ctts, 'total')
                             ? ctts.completed / ctts.total * 100
                             : 0
-                        )
-                          .toLocaleString("pt-BR", { minimumFractionDigits: isMain ? 4 : 2 })
+                        ), isMain ? 4 : 2)
                       }
 
                       if (key == "p_percent") {
-                        return (
+                        return localNumberFormat((
                           has(ctts, 'p_total')
                             ? ctts.p_completed / ctts.p_total * 100
                             : 0
-                        )
-                          .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+                        ), 2)
                       }
 
                       return "???";
                     }
 
                     if (["p_total", "total", "p_completed", "completed"].indexOf(key) >= 0) {
-                      ctts[key] = ctts[key].toLocaleString('pt-BR');
+                      ctts[key] = localNumberFormat(ctts[key]);
                     }
 
 
@@ -423,7 +406,7 @@ function main() {
         const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
 
         remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
-        ms_by_item = String(runtime_byitem_calcs.toLocaleString('pt-BR', { minimumFractionDigits: 3 })).padStart(7, " ");
+        ms_by_item = localNumberFormat(runtime_byitem_calcs, 3).padStart(7, " ");
       }
 
       return progressText(isMain, {

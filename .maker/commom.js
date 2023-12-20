@@ -6,6 +6,18 @@ import { TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2));
 
+export function localNumberFormat(x, digits, lang) {
+  digits = Math.abs(digits && isFinite(digits) ? digits : 0);
+
+  return (x).toLocaleString(
+    typeof lang === 'string' ? lang : "pt-BR",
+    {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }
+  );
+}
+
 export function checkParameters(fail, identify, names, types, args) {
   if (
     typeof identify !== "string" ||
