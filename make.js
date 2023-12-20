@@ -232,11 +232,12 @@ function main() {
 
   listOptions();
 
+  console.log(`Estimated disk occupancy for cluster=512b: ` + (((options.qtd_all * 512) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb");
+  console.log(`Estimated disk occupancy for cluster=1K..: ` + (((options.qtd_all * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
+  console.log(`Estimated disk occupancy for cluster=2K..: ` + (((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
+  console.log(`Estimated disk occupancy for cluster=4K..: ` + (((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) + "Gb\n");
+
   const progress_keys_padstr = {
-    /**
- ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
-       : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
-     */
     first: "000.".length + options.precision_lt
     , total: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , completed: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
