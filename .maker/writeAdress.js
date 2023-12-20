@@ -13,45 +13,51 @@ import {
 import { forceInclude } from "./forceInclude.js"
 import { forceIgnore } from "./forceIgnore.js"
 
-export const adress_skipped = 0;
+export const default_extension = ".txt";
+
 export const adress_isocean = 1;
 export const adress_isforced_ignore = 3;
 export const adress_isinvalid_tz = 2;
+export const adress_unacceptable_tz = 3;
+export const adress_skipped = 4;
+
+function delsaveds(p) {
+  delfile(`${p}${default_extension}`);
+  delfile(`${p}.json`);
+}
 
 /**
  *
- * @param {*} fpath
- * @param {*} zone
- * @param {*} isjson
+ * @param {*} options
+ * @param {*} path
+ * @param {*} tz
  * @param {*} fail
  * @returns
  */
-function checkNeedReIndividualFileWrite(fpath, zone, isjson, fail) {
-  if (fexists(`${fpath}`)) {
-    let content = " ";
-
-    try {
-      if (fsize(fpath).size < 3) {
-        return true;
-      }
-
-      content = (isjson ? JSON.parse : ((r) => r))(fread(fpath, 'ascii').trim());
-    } catch (e) {
-      return typeof fail === 'function' && fail(e, "checkNeedWrite", 1);
+function makeAdressFile(options, path, tz, fail) {
+  try {
+    if (options.save_json) {
+      writedata(`${path}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
     }
 
-    /**
-     * check file, and content
-     */
-    return (isjson)
-      ? content.tz !== zone
-      : content !== zone;
+    if (options.save_raw) {
+      writedata(`${path}${default_extension}`, `${zone}`);
+    }
+  } catch (e) {
+    return typeof fail === 'function' && fail(e, "writeAdress", 1);
   }
-
-  return true;
 }
 
-
+/**
+ *
+ * @param {*} options
+ * @param {*} latitude
+ * @param {*} longitude
+ * @param {*} allItems
+ * @param {*} path
+ * @param {*} fail
+ * @returns
+ */
 export function writeAdress(
   options,
   latitude,
@@ -95,73 +101,76 @@ export function writeAdress(
   const is_ocean = isOcean(latitude, longitude);
   const is_forced_Ignored = !is_ocean && checkIsIncludeInList(latitude, longitude, forceIgnore);
 
+  const defVal = 0;
+
   /** IGNORE OCEAN */
   if (
     (is_ocean || is_forced_Ignored) &&
     // forceInclude takes precedence over other options
     !checkIsIncludeInList(latitude, longitude, forceInclude)
   ) {
-    /** delete if  file is before created and unecesary*/
-    delfile(`${full_path}.json`);
-    delfile(`${full_path}`);
-
-    return is_ocean ? adress_isocean : adress_isforced_ignore;
+    defVal = is_ocean ? adress_isocean : adress_isforced_ignore;
   }
 
-  /**
-   * get zone from saved or generated
-   * FALSE if not need to save
-   */
-  const zone = ((() => {
-    const presaved = (
-      (
-        has(allItems, `${latitude}`) &&
-        has(allItems[`${latitude}`], `${longitude}`)
-      )
-        // saved
-        ? `${allItems[`${latitude}`][`${longitude}`]}`.trim()
-        // not Saved
-        : false
-    );
-
-    const calczone = getTZ(latitude, longitude);
-
-    if (calczone === false) {
-      return adress_isinvalid_tz;
-    }
-
-    return (
-      presaved
-        ? (
-          (presaved !== calczone)
-            ? calczone
-            : false
+  if (!defVal) {
+    /**
+     * get zone from saved or generated
+     * FALSE if not need to save
+     */
+    const zone = ((() => {
+      const presaved = (
+        (
+          has(allItems, `${latitude}`) &&
+          has(allItems[`${latitude}`], `${longitude}`)
         )
-        : calczone
+          // saved
+          ? `${allItems[`${latitude}`][`${longitude}`]}`.trim()
+          // not Saved
+          : false
+      );
 
-    );
-  })());
+      const calczone = getTZ(latitude, longitude);
 
-  // need to save
-  if (zone) {
-    try {
-      if (options.save_json) {
-        writedata(`${full_path}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+      if ((calczone === false) || (typeof calczone !== "string") || (`${calczone}`.length == 0)) {
+        return adress_isinvalid_tz;
       }
 
-      if (options.save_raw) {
-        writedata(`${full_path}.txt`, `${zone}`);
+      if (!isAcceptableTZ(zone)) {
+        return adress_unacceptable_tz;
       }
-    } catch (e) {
-      return typeof fail === 'function' && fail(e, "writeAdress", 1);
+
+      return (
+        presaved
+          ? (
+            (presaved !== calczone)
+              ? calczone
+              : false
+          )
+          : calczone
+
+      );
+    })());
+
+    // need to save
+    if (zone) {
+      defVal = zone;
+
+      if (!typeof zone === 'string') {
+        makeAdressFile(options, full_path, zone, fail)
+      }
+    } else {
+      defVal = adress_skipped;
     }
-
-    return {
-      [latitude.toFixed(options.precision_lt).padStart(options.precision_lt + 1 + 3 + 1)]: {
-        [longitude.toFixed(options.precision_lg).padStart(options.precision_lg + 1 + 3 + 1)]: zone
-      }
-    };
   }
 
-  return adress_skipped;// is skipped
+  if (typeof zone !== 'string') {
+    /** delete if  file is before created and unecesary*/
+    delsaveds(`${full_path}`);
+  }
+
+  return {
+    [latitude.toFixed(options.precision_lt)]: {
+      [longitude.toFixed(options.precision_lg)]: defVal
+    }
+  };
 }

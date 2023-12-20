@@ -597,3 +597,40 @@ export const TZs = [
   'WET',
   'Zulu'
 ];
+
+/**
+[
+  'Africa',     'America',
+  'Antarctica', 'Arctic',
+  'Asia',       'Atlantic',
+  'Australia',  'Brazil',
+  'Canada',     'Chile',
+  'Etc',        'Europe',
+  'Indian',     'Mexico',
+  'Pacific',    'US'
+]
+ */
+export const all_tz_continents = (() => {
+  let parts = {};
+  for (let i = 0; i < TZs.length; i++) {
+    if ((/[^\/]+\//i).test(TZs[i])) {
+      parts[(TZs[i].split("/")[0])] = 1;
+    }
+  }
+
+  return [...Object.keys(parts)];
+})();
+
+
+export const acceptable_continents = (() => {
+  const remove = ["etc"];
+  let n = [];
+
+  for (let i = 0; i < all_tz_continents.length; i++) {
+    if (remove.indexOf(all_tz_continents[i].toLowerCase()) < 0) {
+      n.push();
+    }
+  }
+
+  return n;
+})();

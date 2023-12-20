@@ -2,7 +2,7 @@ import fs from 'fs';
 import minimist from 'minimist';
 import { find } from 'geo-tz';
 import PATH from "path"
-import { TZs } from "./TZs.js"
+import { acceptable_continents, TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2));
 
@@ -256,8 +256,20 @@ export function isOcean(latitude, longitude, fail) {
   return false;
 }
 
+export function isAcceptableTZ(tz) {
+  const mt = TZs[i].match(/([^\/]+)\//i);
+  const ac = JSON.stringify(acceptable_continents);
+
+  return (
+    mt &&
+    Array.isArray(mt) &&
+    (mt.length >= 2) &&
+    (new RegExp(`"${mt[1]}/`, 'i')).test(mt[1])
+  );
+};
+
 export function getTZ(latitude, longitude) {
-  const r = (find(latitude, longitude) + "").trim();
+  const r = `${find(latitude, longitude)}`.trim();
 
   if (TZs.indexOf(r) < 0) {
     return false;

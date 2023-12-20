@@ -6,7 +6,7 @@ import { fork } from 'child_process';
 import colors from 'ansi-colors';
 import { localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
-import { TZs } from "./.maker/TZs.js"
+import { all_tz_continents, TZs } from "./.maker/TZs.js"
 
 const startedTime = Date.now();
 
@@ -214,11 +214,13 @@ function main() {
   var totalPerProcess = [];
 
   listOptions();
+  return console.log(all_tz_continents);
 
   console.log(`Estimated disk occupancy for cluster=512b: ` + localNumberFormat((((options.qtd_all * 512) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=1K..: ` + localNumberFormat((((options.qtd_all * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=2K..: ` + localNumberFormat((((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=4K..: ` + localNumberFormat((((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb\n");
+
 
   const progress_keys_padstr = {
     first: "000.".length + options.precision_lt
