@@ -28,8 +28,6 @@ const ___pre_ = {
   , lat_max: 84
   , long_min: -180
   , long_max: 180
-
-  , save_merged_json: true
 };
 
 const ___pre_2 = mergeDeep({
@@ -214,10 +212,6 @@ function main() {
   var progressbars = (Array(options.qtd_process)).fill(0);
   var processStarted = (Array(options.qtd_process)).fill(false);
   var totalPerProcess = [];
-
-  if (options.save_merged_json && fexists(`${options.destPath}/full.temp.json`)) {
-    makes = JSON.parse(fread(`${options.destPath}/full.temp.json`));
-  }
 
   listOptions();
 
@@ -553,9 +547,6 @@ function main() {
     if (tot >= options.qtd_all) {
       bar_total.stop();
       console.log("");
-      save_merged_json &&
-        writedata(`${destPath} /full.json`, JSON.stringify(makes, null, 0)) &&
-        delfile(`${destPath}/full.temp.json`);
       clearInterval(intervalo);
       return;
     }

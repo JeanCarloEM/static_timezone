@@ -112,9 +112,7 @@ export function makeLatitudes(
         mergeDeep(lt_items, batch_items);
 
         /* WRITE TEMP MERGED JSON */
-        if (options.save_merged_json) {
-          writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
-        }
+        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
 
         /* WRITE RUNTIME CONDITIONS */
         writedata(saved_process_path, JSON.stringify({
