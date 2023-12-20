@@ -10,7 +10,7 @@ export function writeBatch(
   allItems,
   path,
   fail,
-  write_return_status_OrForceUpdate
+  update_generated_status
 ) {
   checkParameters(
     fail, 'writeBatch',
@@ -39,7 +39,7 @@ export function writeBatch(
       allItems,
       path,
       fail,
-      write_return_status_OrForceUpdate
+      update_generated_status
     ]
   );
 
@@ -60,31 +60,41 @@ export function writeBatch(
         return;
       }
 
-      const r = writeAdress(
+      const written_value = writeAdress(
         options,
         latitude,
         longitude,
         allItems,
         path,
+        (generated_value) => {
+          if (
+            ((typeof generated_value) !== (typeof latest_write_return)) ||
+
+            (
+              (typeof generated_value === "number")
+              &&
+              generated_value !== latest_write_return
+            )
+
+          ) {
+            latest_write_return = generated_value;
+
+            (typeof update_generated_status === 'function') &&
+              update_generated_status(generated_value);
+
+            writeReturnOrForceUpdate_used = true;
+          }
+        },
         fail
       );
-
-      if ((typeof r) !== (typeof latest_write_return)) {
-        latest_write_return = r;
-
-        (typeof write_return_status_OrForceUpdate === 'function') &&
-          write_return_status_OrForceUpdate(r);
-
-        writeReturnOrForceUpdate_used = true;
-      }
 
       /* FORCE PROGRESS UPDATE */
       (((++loop_count) % force_update_at) === 0) &&
         !writeReturnOrForceUpdate_used &&
-        (typeof write_return_status_OrForceUpdate === 'function') &&
-        write_return_status_OrForceUpdate(true);
+        (typeof update_generated_status === 'function') &&
+        update_generated_status(true);
 
-      mergeDeep(batch_items, typeof r == 'object' ? r : {});
+      mergeDeep(batch_items, typeof r == 'object' ? written_value : {});
     }
   );
 

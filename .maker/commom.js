@@ -257,7 +257,7 @@ export function isOcean(latitude, longitude, fail) {
 }
 
 export function isAcceptableTZ(tz) {
-  const mt = TZs[i].match(/([^\/]+)\//i);
+  const mt = tz.match(/([^\/]+)\//i);
   const ac = JSON.stringify(acceptable_continents);
 
   return (

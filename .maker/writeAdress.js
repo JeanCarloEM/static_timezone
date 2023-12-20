@@ -5,9 +5,7 @@ import {
   isOcean,
   getTZ,
   has,
-  fexists,
-  fread,
-  fsize,
+  isAcceptableTZ,
   writedata
 } from "./commom.js";
 import { forceInclude } from "./forceInclude.js"
@@ -64,6 +62,7 @@ export function writeAdress(
   longitude,
   allItems,
   path,
+  update_generated_status,
   fail
 ) {
   checkParameters(
@@ -101,7 +100,7 @@ export function writeAdress(
   const is_ocean = isOcean(latitude, longitude);
   const is_forced_Ignored = !is_ocean && checkIsIncludeInList(latitude, longitude, forceIgnore);
 
-  const defVal = 0;
+  let defVal = 0;
 
   /** IGNORE OCEAN */
   if (
@@ -135,7 +134,7 @@ export function writeAdress(
         return adress_isinvalid_tz;
       }
 
-      if (!isAcceptableTZ(zone)) {
+      if (!isAcceptableTZ(calczone)) {
         return adress_unacceptable_tz;
       }
 
@@ -163,10 +162,12 @@ export function writeAdress(
     }
   }
 
-  if (typeof zone !== 'string') {
+  if (typeof defVal !== 'string') {
     /** delete if  file is before created and unecesary*/
     delsaveds(`${full_path}`);
   }
+
+  (typeof update_generated_status === 'function') && update_generated_status(defVal);
 
   return {
     [latitude.toFixed(options.precision_lt)]: {

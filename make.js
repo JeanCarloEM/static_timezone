@@ -214,7 +214,6 @@ function main() {
   var totalPerProcess = [];
 
   listOptions();
-  return console.log(all_tz_continents);
 
   console.log(`Estimated disk occupancy for cluster=512b: ` + localNumberFormat((((options.qtd_all * 512) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=1K..: ` + localNumberFormat((((options.qtd_all * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
