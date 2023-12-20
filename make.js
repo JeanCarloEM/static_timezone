@@ -48,13 +48,25 @@ const ___pre_4 = mergeDeep({
   qtd_decpart_latitudes: ___pre_3.decimal_lt_size * ___pre_3.qtd_longitudes
 }, ___pre_3);
 
-const options = mergeDeep({
+const ___pre_5 = mergeDeep({
   qtd_longitudes: ___pre_4.long_range * ___pre_4.decimal_lg_size
   , qtd_all: ___pre_4.lat_range * ___pre_4.qtd_decpart_latitudes
-  , qtd_per_process: ___pre_4.segs * ___pre_4.qtd_decpart_latitudes
+  , qtd_by_process: ___pre_4.segs * ___pre_4.qtd_decpart_latitudes
   , destPath: path.join(`${___pre_4.root}/gcs/${(___pre_4.precision)}-digit`)
   , pad_adress: 1 + 3 + 1 + ___pre_4.precision
 }, ___pre_4);
+
+const options = mergeDeep({
+  padstr_total_by_process: (___pre_5.qtd_all)
+    .toFixed(2)
+    .toLocaleString("pt-BR")
+    .length,
+  padstr_total_all: (___pre_5.qtd_all)
+    .toFixed(2)
+    .toLocaleString("pt-BR")
+    .length,
+}, ___pre_5);
+
 
 
 
@@ -128,6 +140,10 @@ function terminate() {
  * @returns
  */
 function secondsFormated(s) {
+  if (typeof s !== 'number' || !isFinite(s)) {
+    throw new Error(`[secondsFormated] Invalid seconds is passed: '${s}'`);
+  }
+
   const d = Math.floor(s / 86400);
   s = s % 86400;
   const h = Math.floor(s / 3600);
@@ -135,7 +151,12 @@ function secondsFormated(s) {
   const m = Math.round(s / 60);
   s = s % 60;
 
-  return `${d}, ${(String(h).padStart(2, "0"))}:${(String(m).padStart(2, "0"))}:${(String(s).padStart(2, "0"))}`;
+  let dd = d ? `${d}d, ` : '';
+  let hh = (String(h).padStart(2, "0"));
+  let mm = (String(m).padStart(2, "0"));
+  let ss = (String(s).padStart(2, "0"));
+
+  return `${dd}${hh}:${mm}:${ss}`;
 }
 
 function listOptions() {
@@ -210,13 +231,29 @@ function main() {
   listOptions();
 
   const progress_keys_padstr = {
-    first: options.precision + 1 + maxlength(options.lat_mim, options.lat_max)
-    , total: `${options.qtd_decpart_latitudes}`.length
-    , completed: `${options.qtd_decpart_latitudes}`.length
-    , gtotal: `${options.qtd_all}`.length
-    , gcompleted: `${options.qtd_all}`.length
-    , p_total: `${options.qtd_longitudes}`.length
-    , p_completed: `${options.qtd_longitudes}`.length
+    /**
+ ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+       : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
+     */
+    first: "000.".length + options.precision_lt
+    , total: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
+    , completed: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
+    , percent: (isMain) => "000.".length + (isMain ? 4 : 2)
+    , ms: "00.000".length
+    , elapsed: "00d, 00:00:00".length
+    , Remaining: "00d, 00:00:00".length
+    , id: 3
+    , lat: "000.".length + options.precision_lt
+    , long: "000.".length + options.precision_lg
+    , p_percent: "000.00".length
+    , p_total: options.qtd_longitudes
+      .toFixed(0)
+      .toLocaleString("pt-BR")
+      .length
+    , p_completed: options.qtd_longitudes
+      .toFixed(0)
+      .toLocaleString("pt-BR")
+      .length
   }
 
   const multibar = new cliProgress.MultiBar({
@@ -227,37 +264,8 @@ function main() {
     emptyOnZero: true,
     forceRedraw: false,
     barsize: 20,
-    /*
-      parametros:
-      {
-        progress: 0.002777777777777778,
-        eta: 115,
-        startTime: 1702155963656,
-        stopTime: null,
-        total: 36000,
-        value: 100,
-        maxWidth: 134
-      } {
-        k: 39,
-        percentage_all: '  0',
-        start: '-51',
-        skipped: 'Skipped',
-        step: '   0',
-        astep: ' 400',
-        lat: ' -51.99',
-        long: '-180.00',
-        index: ' 39'
-      }
-            {
-              global_makes
-              id
-              write_return_status
-              first_lat
-              latitude
-              longitude
-            }
-    */
-    format: function (options, params, values) {
+
+    format: function (OPT, params, values) {
       function getVal(x) {
         if (has(values, x)) {
           return values[x];
@@ -272,7 +280,7 @@ function main() {
       }
 
       function newBar(isMain, index, percent, size, ok, unok) {
-        ok = (typeof ok === 'string' && ok.length === 1) ? ok : options.barCompleteString;
+        ok = (typeof ok === 'string' && ok.length === 1) ? ok : OPT.barCompleteString;
         unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
         const completed = Math.floor(percent * size);
         return (
@@ -288,45 +296,108 @@ function main() {
       }
 
       function progressText(isMain, ctts) {
+        if (has(ctts, 'total') && has(ctts, 'complected') && ctts.comleted > ctts.total) {
+          throw new Error(`[progressText] in process '${ctts.id}': completed > total`);
+        }
+
+        if (has(ctts, 'p_total') && has(ctts, 'p_complected') && ctts.comleted > ctts.total) {
+          throw new Error(`[progressText] in process '${ctts.id}': p_completed > p_total`);
+        }
+
         return (
-          (
-            isMain
-              ? "{id}: |{gbar}| {percent}%, {gcompleted}/{gtotal} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
-              : "{id}: |{gbar}| {percent}%, {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
-          )
-            .replace(
-              /\{([^\}\{ ]+)\}/g,
-              (s, key) => {
-                key = key.toLowerCase();
-
-                return ((() => {
-                  if (!has(ctts, key)) {
-                    if (key == "gbar") {
-                      return newBar(false, "???", 0, options.barsize);
-                    }
-
-                    if (key == "pbar") {
-                      return newBar(false, "???", 0, Math.round(options.barsize / 2));
-                    }
-
-
-                    if (["lat", "long", "p_completed", "completed"].indexOf(key) >= 0) {
-                      return 0;
-                    }
-
-                    if (["percent", "p_percent"].indexOf(key) >= 0) {
-                      return (0).toFixed(2).toLocaleString("pt-BR");
-                    }
-
-                    return "???";
-                  }
-
-                  return ctts[key];
-                })() + "")
-
-                  .padStart(has(progress_keys_padstr, key) ? progress_keys_padstr[key] : 0, " ");
-              }
+          ((r) => isMain ? colors.bgYellow(colors.black(r)) : (
+            has(ctts, 'id', 'number')
+              ? (
+                (ctts.id % 2 === 1)
+                  ? colors.bgBlackBright(colors.black(r))
+                  : r
+              )
+              : r
+          ))(
+            (
+              isMain
+                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+                : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
             )
+              .replace(
+                /\{([^\}\{ ]+)\}/g,
+                (s, key) => {
+                  key = key.toLowerCase();
+
+                  return ((() => {
+                    if (!has(ctts, key)) {
+                      if (key == "gbar") {
+                        return newBar(
+                          false,
+                          (
+                            has(ctts, 'total')
+                              ? ctts.completed / ctts.total
+                              : "???"
+                          ),
+                          0,
+                          OPT.barsize
+                        );
+                      }
+
+                      if (key == "pbar") {
+                        return newBar(
+                          false,
+                          (
+                            has(ctts, 'p_total')
+                              ? ctts.p_completed / ctts.p_total
+                              : "???"
+                          ),
+                          0,
+                          Math.round(OPT.barsize / 2)
+                        );
+                      }
+
+                      if (key == "percent") {
+                        return (
+                          has(ctts, 'total')
+                            ? ctts.completed / ctts.total * 100
+                            : 0
+                        )
+                          .toFixed(isMain ? 4 : 2)
+                          .toLocaleString("pt-BR")
+                      }
+
+                      if (key == "p_percent") {
+                        return (
+                          has(ctts, 'p_total')
+                            ? ctts.p_completed / ctts.p_total * 100
+                            : 0
+                        )
+                          .toFixed(2)
+                          .toLocaleString("pt-BR")
+                      }
+
+                      return "???";
+                    }
+
+                    if (["p_total", "total", "p_completed", "completed"].indexOf(key) >= 0) {
+                      ctts[key] = ctts[key].toLocaleString('pt-BR');
+                    }
+
+
+                    return ctts[key];
+                  })() + "")
+                    .padStart(
+                      (
+                        has(progress_keys_padstr, key)
+                          ? (
+                            (
+                              (typeof progress_keys_padstr[key] === 'function')
+                                ? progress_keys_padstr[key]
+                                : (r) => progress_keys_padstr[r]
+                            )(key)
+                          )
+                          : 0
+                      ),
+                      " ");
+                }
+              )
+          )
         )
       };
 
@@ -338,20 +409,11 @@ function main() {
 
       if (!values) return progressText(false, {});
 
-      const id = (getVal('id') !== "" && getVal('id') >= 0)
-        ? getVal('id')
-        : isStopedSeconds_bars.length - 1;
+      const id = getVal('id');
 
       const isMain = id < 0;
 
-      const main_p_size = options.barsize;
-      const step_p_size = options.barsize;
-      const global_progress = values.global_makes / values.global_full;
-
-      const pbar = newBar(isMain, id, params.progress, main_p_size, '\u25A0');
-      const gbar = isMain ? "" : newBar(isMain, id, global_progress, step_p_size, "■");
-
-      let lapse = "0, 00:00:00";
+      let lapse = "00:00:00";
       let remaining = lapse;
       let ms_by_item = 0;
 
@@ -359,29 +421,23 @@ function main() {
         let runtime = Date.now() - startedTime;
         lapse = secondsFormated(Math.floor(runtime / 1000));
 
-        const runtime_byitem_calcs = runtime / values.global_full / 1000;
+        const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
 
-        ms_by_item = ms_by_item / runtime_byitem_calcs.length;
-        remaining = secondsFormated(Math.round(ms_by_item * (params.total - params.value)));
-        ms_by_item = String(ms_by_item.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
+        remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
+        ms_by_item = String(runtime_byitem_calcs.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
       }
-      /**
-       "{id}: |{gbar}| {percent}%, {gcompleted}/{gtotal} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
-       "{id}: |{gbar}| {percent}%, {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}%, {p_completed}/{p_total}"
-       */
+
       return progressText(isMain, {
         id: id,
-        gbar: gbar,
-        pbar: pbar,
+        first: values.first_lat,
         lapse: lapse,
         ms: ms_by_item,
         elapsed: lapse,
         remaining: remaining,
-        completed: params.value,
-        total: params.total,
-        gcompleted: params.value,
-        gtotal: params.total,
-        percent: global_progress.toFixed(isMain ? 4 : 2).toLocaleString("pt-BR")
+        p_completed: params.value,
+        p_total: options.qtd_longitudes,
+        completed: isMain ? params.value : (values.global_makes ? values.global_makes : params.value),
+        total: isMain ? options.qtd_all : options.qtd_by_process,
       });
     }
 
@@ -392,7 +448,7 @@ function main() {
    */
   (Array(options.qtd_process).fill('0')).forEach((e, k) => {
     var __counter = { comleted: { part_val: 0, global_val: 0 }, forced: { part_val: 0, global_val: 0 } };
-    const bar = multibar.create(options.qtd_longitudes, 0);
+    const bar = multibar.create(options.qtd_by_process, 0);
     progressbars[k] = bar;
 
     fork(process.argv[1], (() => {
@@ -401,7 +457,6 @@ function main() {
       return nn;
     })())
       .on('message', (msg) => {
-        //console.log("MSG:", msg);
         ((progress) => {
           if (
             (typeof msg !== 'object') ||
@@ -416,6 +471,8 @@ function main() {
           }
 
           isStopedSeconds_bars[k] = 0;
+
+          let part_val = 0, global_val = 0;
 
           if (has(msg, "increase") && msg.increase) {
             if (!processStarted[k]) {
@@ -445,11 +502,11 @@ function main() {
               ? (__counter.comleted.part_val + options.decimal_lg_size)
               : __counter.forced.global_val;
 
-            const part_val = __counter.comleted.part_val > __counter.forced.part_val
+            part_val = __counter.comleted.part_val > __counter.forced.part_val
               ? __counter.comleted.part_val
               : __counter.forced.part_val;
 
-            const global_val = __counter.comleted.global_val > __counter.forced.global_val
+            global_val = __counter.comleted.global_val > __counter.forced.global_val
               ? __counter.comleted.global_val
               : __counter.forced.global_val;
 
@@ -464,18 +521,12 @@ function main() {
 
           if (has(msg, "finished") && (typeof msg.finished === "object")) {
             isStopedSeconds_bars[k] === true;
-            progress(msg, [options.qtd_longitudes, options.qtd_per_process]);
+            progress(msg, [options.qtd_longitudes, options.qtd_by_process]);
             bar.stop();
             makes = mergeDeep(makes, msg.finished);
-
-            return;
           }
 
-          try {
-            progress(msg, [part_val, global_val]);
-          } catch (e) {
-
-          }
+          progress(msg, [part_val, global_val]);
         })((msg, val) => {
           bar.update(
             val[0],
@@ -501,13 +552,7 @@ function main() {
   intervalo = setInterval(() => {
     if (!bar_total) {
       if (totalPerProcess.length == options.qtd_process) {
-        let sum = 0;
-
-        for (let i = 0; i < totalPerProcess.length; i++) {
-          sum += totalPerProcess[i];
-        }
-
-        bar_total = multibar.create(sum, 0);
+        bar_total = multibar.create(options.qtd_all, 0);
       }
     }
 
@@ -520,7 +565,7 @@ function main() {
       : __total.forced.part_val
 
     bar_total.update(tot, {
-      index: -1
+      id: -1
     });
 
     if (tot >= options.qtd_all) {

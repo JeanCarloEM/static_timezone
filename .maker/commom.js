@@ -71,8 +71,10 @@ export function minlength(...args) {
   return len;
 }
 
-export function has(target, k) {
-  return (typeof target === "object") && target.hasOwnProperty(k) && target[k] !== "undefined";
+export function has(target, k, istype) {
+  return (typeof target === "object") && target.hasOwnProperty(k) && target[k] !== "undefined" && (
+    (typeof istype !== 'string') || (typeof target[k] == istype)
+  );
 }
 
 
