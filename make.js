@@ -4,13 +4,17 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
+import { TZs } from "./.maker/TZs.js"
 
 const startedTime = Date.now();
 
 const ___pre_ = {
-  precision: getCMDParam('p', 'precision', 2)
+  timezones: TZs
+  , maxlenTZ: maxlength(...TZs)
+  , minlenTZ: minlength(...TZs)
+  , precision: getCMDParam('p', 'precision', 2)
   , update_count: getCMDParam('u', 'update', 100)
   , isFreezeSeconds: getCMDParam('u', 'update', 15)
   , root: getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim()
@@ -58,12 +62,10 @@ const ___pre_5 = mergeDeep({
 
 const options = mergeDeep({
   padstr_total_by_process: (___pre_5.qtd_all)
-    .toFixed(2)
-    .toLocaleString("pt-BR")
+    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
     .length,
   padstr_total_all: (___pre_5.qtd_all)
-    .toFixed(2)
-    .toLocaleString("pt-BR")
+    .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
     .length,
 }, ___pre_5);
 
@@ -247,14 +249,12 @@ function main() {
     , long: "000.".length + options.precision_lg
     , p_percent: "000.00".length
     , p_total: options.qtd_longitudes
-      .toFixed(0)
       .toLocaleString("pt-BR")
       .length
     , p_completed: options.qtd_longitudes
-      .toFixed(0)
       .toLocaleString("pt-BR")
       .length
-  }
+  };
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -358,8 +358,7 @@ function main() {
                             ? ctts.completed / ctts.total * 100
                             : 0
                         )
-                          .toFixed(isMain ? 4 : 2)
-                          .toLocaleString("pt-BR")
+                          .toLocaleString("pt-BR", { minimumFractionDigits: isMain ? 4 : 2 })
                       }
 
                       if (key == "p_percent") {
@@ -368,8 +367,7 @@ function main() {
                             ? ctts.p_completed / ctts.p_total * 100
                             : 0
                         )
-                          .toFixed(2)
-                          .toLocaleString("pt-BR")
+                          .toLocaleString("pt-BR", { minimumFractionDigits: 2 })
                       }
 
                       return "???";
@@ -424,7 +422,7 @@ function main() {
         const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
 
         remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
-        ms_by_item = String(runtime_byitem_calcs.toFixed(3).toLocaleString('pt-BR')).padStart(7, " ");
+        ms_by_item = String(runtime_byitem_calcs.toLocaleString('pt-BR', { minimumFractionDigits: 3 })).padStart(7, " ");
       }
 
       return progressText(isMain, {
