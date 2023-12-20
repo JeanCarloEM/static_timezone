@@ -6,16 +6,56 @@ import { TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2));
 
-export function localNumberFormat(x, digits, lang) {
+export function localNumberFormat(x, digits, langOrPad, padOrland) {
+  const lang = (
+    (typeof langOrPad === 'string')
+      ? langOrPad
+      : (
+        (typeof padOrland === 'string')
+          ? padOrland
+          : 'pt-BR'
+      )
+  );
+
+  const padstr = (
+    ((check) => {
+      return (
+        check(padOrland)
+          ? padOrland
+          : (
+            check(langOrPad)
+              ? langOrPad
+              : false
+          )
+      );
+    })(
+      (y) => {
+        return (
+          (typeof y === 'object') &&
+          Array.isArray(y) &&
+          (y.length === 2) &&
+          (typeof y[0] === 'number') && isFinite(y[0]) &&
+          (typeof y[1] === 'string') && (y[1].trim().length > 0)
+        );
+      }
+    )
+  );
+
   digits = Math.abs(digits && isFinite(digits) ? digits : 0);
 
-  return (x).toLocaleString(
-    typeof lang === 'string' ? lang : "pt-BR",
+  x = (x).toLocaleString(
+    lang,
     {
       minimumFractionDigits: digits,
       maximumFractionDigits: digits
     }
   );
+
+  if (padstr) {
+    return x.padstr(padstr[0], padstr[1]);
+  }
+
+  return x;
 }
 
 export function checkParameters(fail, identify, names, types, args) {

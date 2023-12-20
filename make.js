@@ -400,7 +400,7 @@ function main() {
         const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
 
         remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
-        ms_by_item = localNumberFormat(runtime_byitem_calcs, 3).padStart(7, " ");
+        ms_by_item = localNumberFormat(runtime_byitem_calcs, 3, [7, " "]);
       }
 
       return progressText(isMain, {
