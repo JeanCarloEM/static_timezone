@@ -53,6 +53,7 @@ export function readSavedProcessingPos(options, id, fail) {
     return {
       latitude: false,
       longitude_int_part: false,
+      builts_skippeds: [0, 0],
       id: id,
       params: options
     };
@@ -69,7 +70,7 @@ export function readSavedProcessingPos(options, id, fail) {
   return {
     process_path,
     saved_process_path,
-    opt: saved,
+    data: saved,
     first_process_lat,
     start_lat,
     start_long

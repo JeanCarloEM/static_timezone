@@ -1,4 +1,4 @@
-import { fread, writedata, fexists, localNumberFormat, checkParameters, loopDecimalPart, mergeDeep } from "./commom.js";
+import { fread, delfile, writedata, fexists, localNumberFormat, checkParameters, loopDecimalPart, mergeDeep } from "./commom.js";
 import { writeBatch } from "./writeBatch.js"
 
 export function makeLat(
@@ -9,8 +9,7 @@ export function makeLat(
   process_path,
   fail,
   update_saved_options,
-  update_generated_status,
-  written_or_deleted_callback
+  update_generated_status
 ) {
   checkParameters(
     (pid, msg, funcName, code, data) => {
@@ -25,8 +24,7 @@ export function makeLat(
       'process_path',
       'fail',
       'update_saved_options',
-      'update_generated_status',
-      'written_or_deleted_callback'
+      'update_generated_status'
     ],
     [
       "object",
@@ -37,7 +35,6 @@ export function makeLat(
       "function",
       "function",
       "function",
-      "function"
     ],
     [
       options,
@@ -47,8 +44,7 @@ export function makeLat(
       process_path,
       fail,
       update_saved_options,
-      update_generated_status,
-      written_or_deleted_callback
+      update_generated_status
     ]
   );
 
@@ -82,6 +78,7 @@ export function makeLat(
         lg++
       ) {
         first_restored_long_start = false;
+        let written_or_deleted_count = [0, 0];
 
         mergeDeep(
           lt_items,
@@ -92,13 +89,22 @@ export function makeLat(
             lt_items,
             fail,
             update_generated_status,
-            written_or_deleted_callback
+            /**
+             *
+             * @param {*} builtOrDeleted
+             */
+            (builtOrDeleted) => {
+              const idk = (builtOrDeleted > 0) ? 0 : (builtOrDeleted < 0 ? 1 : false);
+
+              if (idk !== false) {
+                return written_or_deleted_count[idk]++;
+              }
+            }
           )
         );
 
         writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
-
-        update_saved_options(latitude, lg);
+        update_saved_options(latitude, lg, written_or_deleted_count);
       }
 
       writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0));

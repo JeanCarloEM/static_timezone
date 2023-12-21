@@ -106,13 +106,14 @@ process.on('message', (msg) => {
      * @param {*} write_return_status
      * @param {*} dont_increaseOrFinished
      */
-    (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished) => {
+    (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished, builts_skippeds) => {
       let send = {
         id: id,
         first_lat: first_lat,
         latitude: latitude.toFixed(options.precision),
         longitude: long_int_part,
-        write_return_status: write_return_status
+        write_return_status: write_return_status,
+        builts_skippeds: builts_skippeds
       };
 
       if (
@@ -126,44 +127,10 @@ process.on('message', (msg) => {
       }
 
       process.send(send);
-    },
-    /**
-     * written_or_deleted_callback()
-     *
-     * @param {*} incOrDec
-     */
-    (incOrDec) => {
-      generated_or_ignorated_deleted_status(
-        ((incOrDec > 0) ? 0 : ((incOrDec < 0) ? 1 : false)),
-        true
-      );
     }
   );
 });
 
-/**
- *
- * @param {*} index 0 for generated file OR 1 for ignorated/deleted
- * @param {*} updateOn true for increase one
- * @returns
- */
-function generated_or_ignorated_deleted_status(index, updateOn) {
-  process.generated_or_ignorated = (
-    (
-      has(process, 'generated_or_ignorated', 'object') &&
-      Array.isArray(process.generated_or_ignorated) &&
-      (process.generated_or_ignorated.length === 2)
-    )
-      ? process.generated_or_ignorated
-      : [0, 0]
-  );
-
-  if (updateOn) {
-    process.generated_or_ignorated[index]++;
-  }
-
-  return process.generated_or_ignorated[index];
-}
 
 /**
  *
@@ -285,7 +252,10 @@ function main() {
     , p_percent: "000.00".length
     , p_total: localNumberFormat(options.qtd_longitudes).length
     , p_completed: localNumberFormat(options.qtd_longitudes).length
+    , pbuilts: 3
   };
+
+  var builts_skippeds_status = (Array(options.qtd_process)).fill([0, 0]);
 
   const multibar = new cliProgress.MultiBar({
     clearOnComplete: false,
@@ -347,7 +317,7 @@ function main() {
           ))(
             (
               isMain
-                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ Built: {builts}, skippeds: {skippeds} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining} "
+                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ Built: {builts} (${pbuilts}%) ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining} "
                 : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
             )
               .replace(
@@ -459,8 +429,8 @@ function main() {
         first: values.first_lat,
         lapse: lapse,
         ms: ms_by_item,
-        builts: isMain ? generated_or_ignorated_deleted_status(0) : 0,
-        skippeds: isMain ? generated_or_ignorated_deleted_status(1) : 0,
+        builts: isMain ? values.builts : 0,
+        pbuilts: isMain ? values.builts / options.qtd_all * 100 : 0,
         elapsed: lapse,
         remaining: remaining,
         p_completed: params.value,
@@ -498,6 +468,8 @@ function main() {
             console.error("Child '", k, "' exited with data:", msg.error);
             return terminate();
           }
+
+          builts_skippeds_status[k] = has(msg, 'builts_skippeds') ? msg.builts_skippeds : builts_skippeds_status[k];
 
           isStopedSeconds_bars[k] = 0;
 
@@ -593,20 +565,13 @@ function main() {
       ? __total.completed.part_val
       : __total.forced.part_val
 
-    bar_total.update(tot, {
-      id: -1
-    });
-
-    if (tot >= options.qtd_all) {
-      bar_total.stop();
-      console.log("");
-      clearInterval(intervalo);
-      return;
-    }
 
     isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = 0;
+    let builts = 0;
 
     for (var k = 0; k < progressbars.length; k++) {
+      builts += builts_skippeds_status[k][0];
+
       if (typeof isStopedSeconds_bars[k] !== 'boolean') {
         isStopedSeconds_bars[k]++;
 
@@ -615,6 +580,18 @@ function main() {
           progressbars[k].update(null);
         }
       }
+    }
+
+    bar_total.update(tot, {
+      id: -1,
+      builts
+    });
+
+    if (tot >= options.qtd_all) {
+      bar_total.stop();
+      console.log("");
+      clearInterval(intervalo);
+      return;
     }
   }, 1000);
 }

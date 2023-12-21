@@ -17,7 +17,7 @@ export function makeLatitudes(
   id,
   fail,
   update_progress,
-  written_or_deleted_callback
+  //written_or_deleted_callback
 ) {
   checkParameters(
     fail,
@@ -27,21 +27,21 @@ export function makeLatitudes(
       'id',
       'fail',
       'update_progress',
-      'written_or_deleted_callback'
+      //'written_or_deleted_callback'
     ],
     [
       'object',
       'number',
       'function',
       'function',
-      'function'
+      //'function'
     ],
     [
       options,
       id,
       fail,
       update_progress,
-      written_or_deleted_callback
+      //written_or_deleted_callback
     ]
   );
 
@@ -52,6 +52,7 @@ export function makeLatitudes(
   let last_generated_value = {}
   let last_generated_latitude = PROCESS.first_process_lat;
   let last_generated_longitude = options.long_min;
+  let builts_skippeds_status = [PROCESS.data.builts_skippeds[0], PROCESS.data.builts_skippeds[1]];
 
   for (var lt = Math.round(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
     makeLat(
@@ -61,7 +62,16 @@ export function makeLatitudes(
       first_retored_runtime ? PROCESS.start_long : options.long_min,
       PROCESS.process_path,
       fail,
-      (latitude, long_int_part) => {
+      /**
+       *
+       * @param {*} latitude
+       * @param {*} long_int_part
+       * @param {*} update_saved_options
+       */
+      (latitude, long_int_part, update_saved_options) => {
+        builts_skippeds_status[0] += update_saved_options[0];
+        builts_skippeds_status[1] += update_saved_options[1];
+
         /* WRITE RUNTIME CONDITIONS */
         writedata(
           PROCESS.saved_process_path,
@@ -69,6 +79,7 @@ export function makeLatitudes(
             {
               latitude: latitude,
               longitude_int_part: long_int_part,
+              builts_skippeds: builts_skippeds_status,
               id: id,
 
               params: options
@@ -76,7 +87,7 @@ export function makeLatitudes(
           )
         );
 
-        update_progress(id, PROCESS.first_lat, latitude, long_int_part, last_generated_value, false);
+        update_progress(id, PROCESS.first_lat, latitude, long_int_part, last_generated_value, false, builts_skippeds_status);
       },
       /**
        * update_generated_status()
@@ -107,8 +118,7 @@ export function makeLatitudes(
             true
           );
         }
-      },
-      written_or_deleted_callback
+      }
     );
 
     first_retored_runtime = false;
@@ -121,7 +131,7 @@ export function makeLatitudes(
     last_generated_longitude,
     last_generated_value,
     {
-      finished: allItems
+      finished: 1
     }
   );
 }
