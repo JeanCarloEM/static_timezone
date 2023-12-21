@@ -54,7 +54,7 @@ const ___pre_5 = mergeDeep({
   qtd_longitudes: ___pre_4.long_range * ___pre_4.decimal_lg_size
   , qtd_all: ___pre_4.lat_range * ___pre_4.qtd_decpart_latitudes
   , qtd_by_process: ___pre_4.segs * ___pre_4.qtd_decpart_latitudes
-  , destPath: path.join(`${___pre_4.root}/gcs/${(___pre_4.precision)}-digit`)
+  , destPath: path.join(`${___pre_4.root}/gcs/${(___pre_4.precision_lt)}-${(___pre_4.precision_lg)}-digit`)
   , pad_adress: 1 + 3 + 1 + ___pre_4.precision
 }, ___pre_4);
 
@@ -80,7 +80,6 @@ process.on('message', (msg) => {
   makeLatitudes(
     options,
     msg.start,
-    options.destPath,
     /**
     * fail()
     *

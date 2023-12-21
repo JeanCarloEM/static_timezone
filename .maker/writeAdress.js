@@ -61,7 +61,6 @@ export function writeAdress(
   latitude,
   longitude,
   allItems,
-  path,
   update_generated_status,
   written_or_deleted_callback,
   fail
@@ -73,7 +72,6 @@ export function writeAdress(
       'latitude',
       'longitude',
       'allItems',
-      'path',
       'update_generated_status',
       'written_or_deleted_callback',
       'fail'
@@ -83,7 +81,6 @@ export function writeAdress(
       'number',
       'number',
       'object',
-      'string',
       "function",
       'function',
       "function"
@@ -93,7 +90,6 @@ export function writeAdress(
       latitude,
       longitude,
       allItems,
-      path,
       update_generated_status,
       written_or_deleted_callback,
       fail
@@ -102,7 +98,7 @@ export function writeAdress(
 
   const ltpath = String(latitude.toFixed(options.precision_lt)).replace(/[,\.]/, '/');
   const lgpath = String(longitude.toFixed(options.precision_lg)).replace(/[,\.]/g, '/');
-  const full_path = `${path}/lat/${ltpath}/long/${lgpath}`;
+  const full_path = `${options.destPath}/lat/${ltpath}/long/${lgpath}`;
 
   const is_ocean = isOcean(latitude, longitude);
   const is_forced_Ignored = !is_ocean && checkIsIncludeInList(latitude, longitude, forceIgnore);

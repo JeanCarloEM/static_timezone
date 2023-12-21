@@ -7,7 +7,6 @@ export function makeLat(
   lt_dec,
   first_restored_long_start,
   process_path,
-  path,
   fail,
   update_saved_options,
   update_generated_status,
@@ -24,7 +23,6 @@ export function makeLat(
       'lt_dec',
       'first_restored_long_start',
       'process_path',
-      'path',
       'fail',
       'update_saved_options',
       'update_generated_status',
@@ -35,7 +33,6 @@ export function makeLat(
       "number",
       "number",
       ["boolean", "number"],
-      "string",
       "string",
       "function",
       "function",
@@ -48,7 +45,6 @@ export function makeLat(
       lt_dec,
       first_restored_long_start,
       process_path,
-      path,
       fail,
       update_saved_options,
       update_generated_status,
@@ -64,7 +60,7 @@ export function makeLat(
     options.lat_max,
     (latitude) => {
       const saved_process_path_tmp = `${process_path}/${localNumberFormat(Math.abs(latitude), options.precision_lt)}.tmp.data.json`;
-      const saved_process_path_finished = `${path}/${parseInt(latitude)}/${(latitude % 1).toFixed(options.precision_lt).substring(2)}.data.json`;
+      const saved_process_path_finished = `${options.destPath}/${parseInt(latitude)}/${(latitude % 1).toFixed(options.precision_lt).substring(2)}.data.json`;
 
       let lt_items = JSON.parse(
         fexists(saved_process_path_finished)
@@ -94,7 +90,6 @@ export function makeLat(
             latitude,
             lg,
             lt_items,
-            path,
             fail,
             update_generated_status,
             written_or_deleted_callback

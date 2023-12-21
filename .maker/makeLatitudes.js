@@ -15,7 +15,6 @@ import { force_update_at } from "./writeBatch.js";
 export function makeLatitudes(
   options,
   id,
-  path,
   fail,
   update_progress,
   written_or_deleted_callback
@@ -26,7 +25,6 @@ export function makeLatitudes(
     [
       'options',
       'id',
-      'path',
       'fail',
       'update_progress',
       'written_or_deleted_callback'
@@ -34,7 +32,6 @@ export function makeLatitudes(
     [
       'object',
       'number',
-      'string',
       'function',
       'function',
       'function'
@@ -42,7 +39,6 @@ export function makeLatitudes(
     [
       options,
       id,
-      path,
       fail,
       update_progress,
       written_or_deleted_callback
@@ -64,7 +60,6 @@ export function makeLatitudes(
       (PROCESS.start_lat % 1) * options.precision,
       first_retored_runtime ? PROCESS.start_long : options.long_min,
       PROCESS.process_path,
-      path,
       fail,
       (latitude, long_int_part) => {
         /* WRITE RUNTIME CONDITIONS */

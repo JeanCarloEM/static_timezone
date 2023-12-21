@@ -8,7 +8,6 @@ export function writeBatch(
   latitude,
   long,
   allItems,
-  path,
   fail,
   update_generated_status,
   written_or_deleted_callback
@@ -20,7 +19,6 @@ export function writeBatch(
       'latitude',
       'long',
       'allItems',
-      'path',
       'fail',
       'update_generated_status',
       'written_or_deleted_callback'
@@ -30,7 +28,6 @@ export function writeBatch(
       'number',
       'number',
       'object',
-      'string',
       "function",
       "function",
       "function"
@@ -40,7 +37,6 @@ export function writeBatch(
       latitude,
       long,
       allItems,
-      path,
       fail,
       update_generated_status,
       written_or_deleted_callback
@@ -69,7 +65,6 @@ export function writeBatch(
         latitude,
         longitude,
         allItems,
-        path,
         /**
          * update_generated_status()
          *

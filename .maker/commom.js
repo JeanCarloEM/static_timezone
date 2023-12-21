@@ -39,8 +39,8 @@ export function triggerError(process, msg, funcName, code, data) {
  * @returns
  */
 export function readSavedProcessingPos(options, id, fail) {
-  const process_path = `${dirname(options.root)} /.process/${`${id}`.padStart(2, "0")} `;
-  const saved_process_path = `${process_path} /status.json`;
+  const process_path = `${options.root}/.process/${`${id}`.padStart(2, "0")}`.trim();
+  const saved_process_path = `${process_path}/status.json`.trim();
 
   const saved = (() => {
     if (fexists(saved_process_path)) {
