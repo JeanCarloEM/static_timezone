@@ -10,7 +10,8 @@ export function writeBatch(
   allItems,
   path,
   fail,
-  update_generated_status
+  update_generated_status,
+  written_or_deleted_callback
 ) {
   checkParameters(
     fail, 'writeBatch',
@@ -21,7 +22,8 @@ export function writeBatch(
       'allItems',
       'path',
       'fail',
-      'write_return_status_OrForceUpdate'
+      'update_generated_status',
+      'written_or_deleted_callback'
     ],
     [
       'object',
@@ -29,6 +31,7 @@ export function writeBatch(
       'number',
       'object',
       'string',
+      "function",
       "function",
       "function"
     ],
@@ -39,7 +42,8 @@ export function writeBatch(
       allItems,
       path,
       fail,
-      update_generated_status
+      update_generated_status,
+      written_or_deleted_callback
     ]
   );
 
@@ -66,16 +70,18 @@ export function writeBatch(
         longitude,
         allItems,
         path,
+        /**
+         * update_generated_status()
+         *
+         * @param {*} generated_value
+         */
         (generated_value) => {
           if (
             ((typeof generated_value) !== (typeof latest_write_return)) ||
-
             (
-              (typeof generated_value === "number")
-              &&
+              (typeof generated_value === "number") &&
               generated_value !== latest_write_return
             )
-
           ) {
             latest_write_return = generated_value;
 
@@ -85,6 +91,7 @@ export function writeBatch(
             writeReturnOrForceUpdate_used = true;
           }
         },
+        written_or_deleted_callback,
         fail
       );
 

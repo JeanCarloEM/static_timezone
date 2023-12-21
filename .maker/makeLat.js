@@ -1,16 +1,17 @@
-import { checkParameters, loopDecimalPart } from "./commom.js";
-import {writeBatch} from "./writeBatch.js"
+import { localNumberFormat, checkParameters, loopDecimalPart, mergeDeep } from "./commom.js";
+import { writeBatch } from "./writeBatch.js"
 
 export function makeLat(
   options,
   lt,
   lt_dec,
   first_restored_long_start,
-  allItems,
+  process_path,
   path,
   fail,
   callback,
-  write_return_status
+  update_generated_status,
+  written_or_deleted_callback
 ) {
   checkParameters(
     fail,
@@ -18,21 +19,21 @@ export function makeLat(
     [
       'options',
       'lt',
-      'lt_dec',
       'first_restored_long_start',
-      'allItems',
+      'process_path',
       'path',
       'fail',
       'callback',
-      'write_return_status'
+      'update_generated_status',
+      'written_or_deleted_callback'
     ],
     [
       "object",
       "number",
-      "number",
-      "number",
-      "object",
+      ["boolean", "number"],
       "string",
+      "string",
+      "function",
       "function",
       "function",
       "function"
@@ -40,13 +41,12 @@ export function makeLat(
     [
       options,
       lt,
-      lt_dec,
       first_restored_long_start,
-      allItems,
       path,
       fail,
       callback,
-      write_return_status
+      update_generated_status,
+      written_or_deleted_callback
     ]
   );
 
@@ -57,9 +57,22 @@ export function makeLat(
     options.lat_min,
     options.lat_max,
     (latitude) => {
+      const saved_process_path_tmp = `${process_path}/${localNumberFormat(Math.abs(latitude), options.precision_lt)}.tmp.data.json`;
+      const saved_process_path_finished = `${path}/${parseInt(latitude)}/${(latitude % 1).toFixed(options.precision_lt).substring(2)}.data.json`;
+
+      let lt_items = JSON.parse(
+        fexists(saved_process_path_finished)
+          ? fread(saved_process_path_finished)
+          : (
+            fexists(saved_process_path_tmp)
+              ? fread(saved_process_path_tmp)
+              : '{}'
+          )
+      );
+
       for (
         var lg = (
-          typeof first_restored_long_start === "numeric"
+          (typeof first_restored_long_start === "numeric")
             ? first_restored_long_start
             : options.long_min
         );
@@ -68,16 +81,25 @@ export function makeLat(
       ) {
         first_restored_long_start = false;
 
-        callback(writeBatch(
-          options,
-          latitude,
-          lg,
-          allItems,
-          path,
-          fail,
-          write_return_status
-        ), latitude, lg);
+        mergeDeep(
+          lt_items,
+          writeBatch(
+            options,
+            latitude,
+            lg,
+            lt_items,
+            path,
+            fail,
+            update_generated_status,
+            written_or_deleted_callback
+          )
+        );
+
+        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
       }
+
+      writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0));
+      delfile(saved_process_path_tmp);
     },
     lt_dec
   );

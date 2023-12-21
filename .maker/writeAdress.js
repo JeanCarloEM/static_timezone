@@ -63,6 +63,7 @@ export function writeAdress(
   allItems,
   path,
   update_generated_status,
+  written_or_deleted_callback,
   fail
 ) {
   checkParameters(
@@ -73,6 +74,8 @@ export function writeAdress(
       'longitude',
       'allItems',
       'path',
+      'update_generated_status',
+      'written_or_deleted_callback',
       'fail'
     ],
     [
@@ -81,6 +84,8 @@ export function writeAdress(
       'number',
       'object',
       'string',
+      "function",
+      'function',
       "function"
     ],
     [
@@ -89,6 +94,8 @@ export function writeAdress(
       longitude,
       allItems,
       path,
+      update_generated_status,
+      written_or_deleted_callback,
       fail
     ]
   );
@@ -150,22 +157,26 @@ export function writeAdress(
       );
     })());
 
-    // need to save
-    if (zone) {
-      defVal = zone;
-
-      if (!typeof zone === 'string') {
-        makeAdressFile(options, full_path, zone, fail)
-      }
-    } else {
-      defVal = adress_skipped;
-    }
+    defVal = (
+      (!zone)
+        ? adress_skipped
+        : (((value) => {
+          if (!typeof v === 'string') {
+            makeAdressFile(options, full_path, value, fail)
+          }
+          return value;
+        })(zone))
+    );
   }
 
   if (typeof defVal !== 'string') {
     /** delete if  file is before created and unecesary*/
     delsaveds(`${full_path}`);
   }
+
+  (typeof written_or_deleted_callback === 'function') &&
+    written_or_deleted_callback((typeof defVal === 'string') ? 1 : -1);
+
 
   (typeof update_generated_status === 'function') && update_generated_status(defVal);
 

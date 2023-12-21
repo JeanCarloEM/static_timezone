@@ -6,6 +6,84 @@ import { acceptable_continents, TZs } from "./TZs.js"
 
 const _argv = minimist(process.argv.slice(2));
 
+export function triggerError(process, msg, funcName, code, data) {
+  try {
+    process.send({
+      error: {
+        funcName: funcName,
+        code: code,
+        msg: msg
+      }
+    });
+  } catch (error) {
+  }
+
+
+  const err = [
+    colors.bgBlueBright(` Process ${process} ->`),
+    , colors.yellow(`[${code}]`)
+    , "|"
+    , colors.bgRed(" " + funcName + " :")
+    , colors.redBright(msg)
+  ].concat(typeof data !== "undefined" ? ["\nData:", data, "\n"] : []);
+
+
+  throw new Error(err);
+}
+
+/**
+ *
+ * @param {*} options
+ * @param {*} id
+ * @param {*} fail
+ * @returns
+ */
+export function readSavedProcessingPos(options, id, fail) {
+  const process_path = `${dirname(options.root)} /.process/${`${id}`.padStart(2, "0")} `;
+  const saved_process_path = `${process_path} /status.json`;
+
+  const saved = (() => {
+    if (fexists(saved_process_path)) {
+      try {
+        return JSON.parse(fread(saved_process_path));
+      } catch (error) {
+      }
+    }
+
+    return {
+      latitude: false,
+      longitude_int_part: false,
+      id: id,
+      params: options
+    };
+  })();
+
+  if (JSON.stringify(saved.params, null, 0) !== JSON.stringify(options, null, 0)) {
+    return ((typeof fail === 'function') ? fail : triggerError)(id, 'Saved options != actual options.', 'readSavedProcessingPos', 0);
+  }
+
+  const first_process_lat = options.lat_min + id;
+  const start_lat = saved.latitude === false ? first_lat : saved.latitude;
+  const start_long = saved.longitude_int_part === false ? options.long_min : parseInt(saved.longitude_int_part);
+
+  return {
+    process_path,
+    saved_process_path,
+    opt: saved,
+    first_process_lat,
+    start_lat,
+    start_long
+  };
+}
+
+/**
+ *
+ * @param {*} x
+ * @param {*} digits
+ * @param {*} langOrPad
+ * @param {*} padOrland
+ * @returns
+ */
 export function localNumberFormat(x, digits, langOrPad, padOrland) {
   const lang = (
     (typeof langOrPad === 'string')
@@ -86,7 +164,15 @@ export function checkParameters(fail, identify, names, types, args) {
       break;
     } else
 
-      if (types && types[k] && typeof args[k] !== types[k]) {
+      if (
+        types &&
+        types[k] &&
+        (
+          Array.isArray(types[k])
+            ? types[k].indexOf(typeof args[k]) < 0
+            : typeof args[k] !== types[k]
+        )
+      ) {
         throws = `${k}º argument, ('${names[k]}') is '${typeof args[k]}', expected '${types[k]}'.`;
         break;
       }

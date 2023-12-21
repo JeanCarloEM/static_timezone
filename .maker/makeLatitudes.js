@@ -11,29 +11,14 @@ import { force_update_at } from "./writeBatch.js";
  * @param {*} lt
  * @returns
  */
-export function readSavedProcessingPos(options, saved_process_path) {
-  if (fexists(saved_process_path)) {
-    try {
-      return JSON.parse(fread(saved_process_path));
-    } catch (error) {
-    }
-  }
-
-  return {
-    latitude: false,
-    longitude_int_part: Math.round(options.long_min),
-    id: -1,
-
-    params: options
-  };
-}
 
 export function makeLatitudes(
   options,
   id,
   path,
   fail,
-  clback
+  clback,
+  written_or_deleted_callback
 ) {
   checkParameters(
     fail,
@@ -43,12 +28,14 @@ export function makeLatitudes(
       'id',
       'path',
       'fail',
-      'clback'
+      'clback',
+      'written_or_deleted_callback'
     ],
     [
       'object',
       'number',
       'string',
+      'function',
       'function',
       'function'
     ],
@@ -57,93 +44,52 @@ export function makeLatitudes(
       id,
       path,
       fail,
-      clback
+      clback,
+      written_or_deleted_callback
     ]
   );
 
-  const process_path = `${dirname(path)}/${`${id}`.padStart(2, "0")}.process`;
-  const saved_process_path = `${process_path}/main.json`;
-  const saved_process_data = readSavedProcessingPos(options, saved_process_path);
+  const PROCESS = readSavedProcessingPos(options, id);
 
-  if (JSON.stringify(saved_process_data.params, null, 0) !== JSON.stringify(options, null, 0)) {
-    return typeof fail === 'function' && fail('Options saved isnot equal to actual options', "makeLatitudes", 1);
-  }
-
-  const first_lat = options.lat_min + id;
-  const start_lat = saved_process_data.latitude === false ? first_lat : saved_process_data.latitude;
-
-  let allItems = {};
   let first_retored_runtime = true;
-  let latest_write_return = {}
 
-  let last_latitude = first_lat;
-  let last_long_int_part = (
-    first_retored_runtime
-      ? saved_process_data.longitude_int_part
-      : false
-  );
+  let last_generated_value = {}
+  let last_generated_latitude = PROCESS.first_process_lat;
+  let last_generated_longitude = options.long_min;
 
-  for (var lt = Math.round(start_lat); lt < options.lat_max; lt += options.qtd_process) {
-    let saved_process_path_tmp = `${process_path}/${(lt >= 0 ? "+" : "-")}${`${Math.abs(lt)}`.padStart(3, '0')}.tmp.data.json`;
-    let saved_process_path_finished = `${path}/${(lt >= 0 ? "+" : "-")}${`${Math.abs(lt)}`.padStart(3, '0')}.data.json`;
-
-    let lt_items = JSON.parse(
-      fexists(saved_process_path_finished)
-        ? fread(saved_process_path_finished)
-        : (
-          fexists(saved_process_path_tmp)
-            ? fread(saved_process_path_tmp)
-            : '{}'
-        )
-    );
-
+  for (var lt = Math.round(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
     makeLat(
       options,
       lt,
-      (start_lat % 1) * options.precision,
-      last_long_int_part,
-      lt_items,
+      (PROCESS.start_lat % 1) * options.precision,
+      first_retored_runtime ? PROCESS.start_long : options.long_min,
+      PROCESS.process_path,
       path,
       fail,
-      (batch_items, latitude, long_int_part) => {
-        last_latitude = latitude;
-        last_long_int_part = long_int_part;
+      /**
+       * update_generated_status()
+       *
+       * @param {*} generated_value
+       * @returns
+       */
+      (generated_value) => {
+        if (typeof generated_value === "boolean") {
+          return clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, generated_value, force_update_at);
+        }
 
-        mergeDeep(lt_items, batch_items);
-
-        /* WRITE TEMP MERGED JSON */
-        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
-
-        /* WRITE RUNTIME CONDITIONS */
-        writedata(saved_process_path, JSON.stringify({
-          latitude: latitude,
-          longitude_int_part: options.long_min,
-          id: id,
-
-          params: options
-        }));
-
-        clback(id, first_lat, latitude, long_int_part, latest_write_return, false);
+        if ((typeof generated_value) !== (typeof last_generated_value)) {
+          last_generated_value = generated_value;
+          clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, generated_value, true);
+        }
       },
-      (write_return) => {
-        if (typeof write_return === "boolean") {
-          return clback(id, first_lat, last_latitude, last_long_int_part, write_return, force_update_at);
-        }
-
-        if ((typeof write_return) !== (typeof latest_write_return)) {
-          latest_write_return = write_return;
-          clback(id, first_lat, last_latitude, last_long_int_part, write_return, true);
-        }
-      }
+      written_or_deleted_callback
     );
 
     first_retored_runtime = false;
 
-    writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0));
-    delfile(saved_process_path_tmp);
   }
 
-  clback(id, first_lat, last_latitude, last_long_int_part, latest_write_return, {
+  clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, last_generated_value, {
     finished: allItems
   });
 }

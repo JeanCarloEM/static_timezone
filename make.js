@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { all_tz_continents, TZs } from "./.maker/TZs.js"
 
@@ -81,17 +81,32 @@ process.on('message', (msg) => {
     options,
     msg.start,
     options.destPath,
-    (_msg, funcName, code) => {
-      process.send({
-        error: {
-          funcName: funcName,
-          code: code,
-          msg: msg
-        }
-      });
-
-      throw new Error(`${colors.bgBlueBright(` Process ${msg.start} `)} -> ${colors.yellow(`[${code}]`)} | ${colors.bgRed(" " + funcName + " ")}: ${colors.redBright(_msg)}\n` + JSON.stringify(msg));
+    /**
+    * fail()
+    *
+    * @param {*} _msg
+    * @param {*} funcName
+    * @param {*} code
+    */
+    (idp, _msg, funcName, code, data) => {
+      triggerError(
+        msg.start,
+        _msg,
+        funcName,
+        code,
+        msg
+      );
     },
+    /**
+     * clback()
+     *
+     * @param {*} id
+     * @param {*} first_lat
+     * @param {*} latitude
+     * @param {*} long_int_part
+     * @param {*} write_return_status
+     * @param {*} dont_increaseOrFinished
+     */
     (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished) => {
       let send = {
         id: id,
@@ -112,9 +127,44 @@ process.on('message', (msg) => {
       }
 
       process.send(send);
+    },
+    /**
+     * written_or_deleted_callback()
+     *
+     * @param {*} incOrDec
+     */
+    (incOrDec) => {
+      generated_or_ignorated_deleted_status(
+        ((incOrDec > 0) ? 0 : ((incOrDec < 0) ? 1 : false)),
+        true
+      );
     }
   );
 });
+
+/**
+ *
+ * @param {*} index 0 for generated file OR 1 for ignorated/deleted
+ * @param {*} updateOn true for increase one
+ * @returns
+ */
+function generated_or_ignorated_deleted_status(index, updateOn) {
+  process.generated_or_ignorated = (
+    (
+      has(process, 'generated_or_ignorated', 'object') &&
+      Array.isArray(process.generated_or_ignorated) &&
+      (process.generated_or_ignorated.length === 2)
+    )
+      ? process.generated_or_ignorated
+      : [0, 0]
+  );
+
+  if (updateOn) {
+    process.generated_or_ignorated[index]++;
+  }
+
+  return process.generated_or_ignorated[index];
+}
 
 /**
  *
@@ -220,9 +270,10 @@ function main() {
   console.log(`Estimated disk occupancy for cluster=2K..: ` + localNumberFormat((((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=4K..: ` + localNumberFormat((((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb\n");
 
-
   const progress_keys_padstr = {
     first: "000.".length + options.precision_lt
+    , builts: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
+    , skippeds: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , total: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , completed: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , percent: (isMain) => "000.".length + (isMain ? 4 : 2)
@@ -297,7 +348,7 @@ function main() {
           ))(
             (
               isMain
-                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining}"
+                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ Built: {builts}, skippeds: {skippeds} ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining} "
                 : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
             )
               .replace(
@@ -352,7 +403,7 @@ function main() {
                       return "???";
                     }
 
-                    if (["p_total", "total", "p_completed", "completed"].indexOf(key) >= 0) {
+                    if (["p_total", "total", "p_completed", "completed", "builts", "skippeds"].indexOf(key) >= 0) {
                       ctts[key] = localNumberFormat(ctts[key]);
                     }
 
@@ -409,6 +460,8 @@ function main() {
         first: values.first_lat,
         lapse: lapse,
         ms: ms_by_item,
+        builts: isMain ? generated_or_ignorated_deleted_status(0) : 0,
+        skippeds: isMain ? generated_or_ignorated_deleted_status(1) : 0,
         elapsed: lapse,
         remaining: remaining,
         p_completed: params.value,
