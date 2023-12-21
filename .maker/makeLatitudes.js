@@ -1,7 +1,7 @@
 import { writeBatch } from "./writeBatch.js";
 
 import { makeLat } from "./makeLat.js";
-import { dirname, checkParameters, delfile, writedata, mergeDeep, has, fexists, fread, fsize } from "./commom.js";
+import { readSavedProcessingPos, checkParameters, writedata } from "./commom.js";
 import { force_update_at } from "./writeBatch.js";
 
 /**
@@ -17,7 +17,7 @@ export function makeLatitudes(
   id,
   path,
   fail,
-  clback,
+  update_progress,
   written_or_deleted_callback
 ) {
   checkParameters(
@@ -28,7 +28,7 @@ export function makeLatitudes(
       'id',
       'path',
       'fail',
-      'clback',
+      'update_progress',
       'written_or_deleted_callback'
     ],
     [
@@ -44,7 +44,7 @@ export function makeLatitudes(
       id,
       path,
       fail,
-      clback,
+      update_progress,
       written_or_deleted_callback
     ]
   );
@@ -66,6 +66,23 @@ export function makeLatitudes(
       PROCESS.process_path,
       path,
       fail,
+      (latitude, long_int_part) => {
+        /* WRITE RUNTIME CONDITIONS */
+        writedata(
+          PROCESS.saved_process_path,
+          JSON.stringify(
+            {
+              latitude: latitude,
+              longitude_int_part: long_int_part,
+              id: id,
+
+              params: options
+            }
+          )
+        );
+
+        update_progress(id, PROCESS.first_lat, latitude, long_int_part, last_generated_value, false);
+      },
       /**
        * update_generated_status()
        *
@@ -74,22 +91,42 @@ export function makeLatitudes(
        */
       (generated_value) => {
         if (typeof generated_value === "boolean") {
-          return clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, generated_value, force_update_at);
+          return update_progress(
+            id,
+            PROCESS.first_process_lat,
+            last_generated_latitude,
+            last_generated_longitude,
+            generated_value,
+            force_update_at
+          );
         }
 
         if ((typeof generated_value) !== (typeof last_generated_value)) {
           last_generated_value = generated_value;
-          clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, generated_value, true);
+          update_progress(
+            id,
+            PROCESS.first_process_lat,
+            last_generated_latitude,
+            last_generated_longitude,
+            generated_value,
+            true
+          );
         }
       },
       written_or_deleted_callback
     );
 
     first_retored_runtime = false;
-
   }
 
-  clback(id, PROCESS.first_process_lat, last_generated_latitude, last_generated_longitude, last_generated_value, {
-    finished: allItems
-  });
+  update_progress(
+    id,
+    PROCESS.first_process_lat,
+    last_generated_latitude,
+    last_generated_longitude,
+    last_generated_value,
+    {
+      finished: allItems
+    }
+  );
 }

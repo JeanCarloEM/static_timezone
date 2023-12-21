@@ -1,4 +1,4 @@
-import { localNumberFormat, checkParameters, loopDecimalPart, mergeDeep } from "./commom.js";
+import { fread, writedata, fexists, localNumberFormat, checkParameters, loopDecimalPart, mergeDeep } from "./commom.js";
 import { writeBatch } from "./writeBatch.js"
 
 export function makeLat(
@@ -9,26 +9,30 @@ export function makeLat(
   process_path,
   path,
   fail,
-  callback,
+  update_saved_options,
   update_generated_status,
   written_or_deleted_callback
 ) {
   checkParameters(
-    fail,
+    (pid, msg, funcName, code, data) => {
+      fail(options.id, msg, funcName, code, data);
+    },
     'makeLat',
     [
       'options',
       'lt',
+      'lt_dec',
       'first_restored_long_start',
       'process_path',
       'path',
       'fail',
-      'callback',
+      'update_saved_options',
       'update_generated_status',
       'written_or_deleted_callback'
     ],
     [
       "object",
+      "number",
       "number",
       ["boolean", "number"],
       "string",
@@ -41,10 +45,12 @@ export function makeLat(
     [
       options,
       lt,
+      lt_dec,
       first_restored_long_start,
+      process_path,
       path,
       fail,
-      callback,
+      update_saved_options,
       update_generated_status,
       written_or_deleted_callback
     ]
@@ -96,6 +102,8 @@ export function makeLat(
         );
 
         writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
+
+        update_saved_options(latitude, lg);
       }
 
       writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0));

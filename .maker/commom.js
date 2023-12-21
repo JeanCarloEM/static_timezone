@@ -3,6 +3,7 @@ import minimist from 'minimist';
 import { find } from 'geo-tz';
 import PATH from "path"
 import { acceptable_continents, TZs } from "./TZs.js"
+import colors from 'ansi-colors';
 
 const _argv = minimist(process.argv.slice(2));
 
@@ -10,9 +11,7 @@ export function triggerError(process, msg, funcName, code, data) {
   try {
     process.send({
       error: {
-        funcName: funcName,
-        code: code,
-        msg: msg
+        process, msg, funcName, code, data
       }
     });
   } catch (error) {
@@ -23,9 +22,10 @@ export function triggerError(process, msg, funcName, code, data) {
     colors.bgBlueBright(` Process ${process} ->`),
     , colors.yellow(`[${code}]`)
     , "|"
-    , colors.bgRed(" " + funcName + " :")
+    , colors.bgRed(" " + funcName + " ")
+    , ":"
     , colors.redBright(msg)
-  ].concat(typeof data !== "undefined" ? ["\nData:", data, "\n"] : []);
+  ].concat(typeof data !== "undefined" ? ["\nData:", data, JSON.stringify(data), "\n"] : []).join(' ');
 
 
   throw new Error(err);
@@ -63,7 +63,7 @@ export function readSavedProcessingPos(options, id, fail) {
   }
 
   const first_process_lat = options.lat_min + id;
-  const start_lat = saved.latitude === false ? first_lat : saved.latitude;
+  const start_lat = saved.latitude === false ? first_process_lat : saved.latitude;
   const start_long = saved.longitude_int_part === false ? options.long_min : parseInt(saved.longitude_int_part);
 
   return {
@@ -178,13 +178,13 @@ export function checkParameters(fail, identify, names, types, args) {
       }
   }
 
-  if (throws) {
-    if (typeof fail === "function") {
-      fail(throws, identify, "commom::checkParameters");
-    }
-
-    throw new Error(`[${identify}] checkParameters:: ${throws}`);
-  }
+  throws &&
+    (
+      (typeof fail === "function")
+        ?
+        fail :
+        triggerError
+    )(null, throws, identify, "commom::checkParameters");
 }
 
 export function maxlength(...args) {
