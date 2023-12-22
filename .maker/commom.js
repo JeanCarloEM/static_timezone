@@ -37,8 +37,8 @@ export function triggerError(process, msg, funcName, code, data) {
  * @param {*} fail
  * @returns
  */
-export function readSavedProcessingPos(options, id, fail) {
-  const process_path = `${options.root}/.process/${`${id}`.padStart(2, "0")}`.trim();
+export function readSavedProcessingPos(options, id, fail, fpath) {
+  const process_path = `${options.root}/.process/${fpath ? fpath : (`${(id)}`.padStart(2, "0"))}`.trim();
   const saved_process_path = `${process_path}/status.json`.trim();
 
   const saved = (() => {

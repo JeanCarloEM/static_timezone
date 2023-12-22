@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { all_tz_continents, TZs } from "./.maker/TZs.js"
 
@@ -218,6 +218,9 @@ function listOptions() {
  *
  */
 function main() {
+  const PROCESS = readSavedProcessingPos(options, 0, null, `main`);
+  writedata(PROCESS.saved_process_path, JSON.stringify(PROCESS));
+
   var isFrezeeSeconds_bars = (Array(options.qtd_process + 1)).fill(0);
   var progressbars = (Array(options.qtd_process)).fill(0);
   var total_makes_by_process = (Array(options.qtd_process)).fill(0);
@@ -230,7 +233,7 @@ function main() {
   console.log(`Estimated disk occupancy for cluster=4K..: ` + localNumberFormat((((options.qtd_all * 4 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb\n");
 
   const progress_keys_padstr = {
-    first: "000.".length + options.precision_lt
+    first: "+000.".length + options.precision_lt
     , builts: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , skippeds: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
     , total: (isMain) => (isMain ? options.padstr_total_all : options.padstr_total_by_process)
