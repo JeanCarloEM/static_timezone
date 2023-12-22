@@ -145,11 +145,11 @@ function secondsFormated(s) {
     throw new Error(`[secondsFormated] Invalid seconds is passed: '${s}'`);
   }
 
-  const d = Math.floor(s / 86400);
+  const d = parseInt(s / 86400);
   s = s % 86400;
-  const h = Math.floor(s / 3600);
+  const h = parseInt(s / 3600);
   s = s % 3600;
-  const m = Math.round(s / 60);
+  const m = parseInt(s / 60);
   s = s % 60;
 
   let dd = d ? `${d}d, ` : '';
@@ -219,7 +219,7 @@ function listOptions() {
  */
 function main() {
   const PROCESS = readSavedProcessingPos(options, 0, null, `main`);
-  writedata(PROCESS.saved_process_path, JSON.stringify(PROCESS));
+  writedata(PROCESS.saved_process_path, JSON.stringify(PROCESS.data));
 
   var isFrezeeSeconds_bars = (Array(options.qtd_process + 1)).fill(0);
   var progressbars = (Array(options.qtd_process)).fill(0);
