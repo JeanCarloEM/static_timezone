@@ -44,7 +44,7 @@ export function writeBatch(
   );
 
   let batch_items = {};
-  let latest_write_return = {}
+  let last_generated_value = {}
   let loop_count = 0;
 
   loopDecimalPart(
@@ -72,13 +72,13 @@ export function writeBatch(
          */
         (generated_value) => {
           if (
-            ((typeof generated_value) !== (typeof latest_write_return)) ||
+            ((typeof generated_value) !== (typeof last_generated_value)) ||
             (
               (typeof generated_value === "number") &&
-              generated_value !== latest_write_return
+              generated_value !== last_generated_value
             )
           ) {
-            latest_write_return = generated_value;
+            last_generated_value = generated_value;
 
             (typeof update_generated_status === 'function') &&
               update_generated_status(generated_value);
@@ -94,7 +94,7 @@ export function writeBatch(
       (((++loop_count) % force_update_at) === 0) &&
         !writeReturnOrForceUpdate_used &&
         (typeof update_generated_status === 'function') &&
-        update_generated_status(true);
+        update_generated_status(last_generated_value);
 
       mergeDeep(batch_items, typeof r == 'object' ? written_value : {});
     }

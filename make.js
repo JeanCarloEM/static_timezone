@@ -8,6 +8,14 @@ import { triggerError, localNumberFormat, minlength, maxlength, fexists, fread, 
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { all_tz_continents, TZs } from "./.maker/TZs.js"
 
+import {
+  adress_isocean
+  , adress_isforced_ignore
+  , adress_isinvalid_tz
+  , adress_unacceptable_tz
+  , adress_unchanged
+} from "./.maker/writeAdress.js";
+
 const startedTime = Date.now();
 
 const ___pre_ = {
@@ -93,7 +101,7 @@ process.on('message', (msg) => {
         _msg,
         funcName,
         code,
-        msg
+        data ? data : msg
       );
     },
     /**
@@ -106,27 +114,15 @@ process.on('message', (msg) => {
      * @param {*} write_return_status
      * @param {*} dont_increaseOrFinished
      */
-    (id, first_lat, latitude, long_int_part, write_return_status, dont_increaseOrFinished, builts_skippeds) => {
-      let send = {
+    (id, first_lat, latitude, long_int_part, last_generated_value, builts_skippeds) => {
+      process.send({
         id: id,
         first_lat: first_lat,
         latitude: latitude.toFixed(options.precision),
         longitude: long_int_part,
-        write_return_status: write_return_status,
+        last_generated_value: last_generated_value,
         builts_skippeds: builts_skippeds
-      };
-
-      if (
-        typeof dont_increaseOrFinished === 'object' &&
-        has(dont_increaseOrFinished, 'finished') &&
-        (typeof dont_increaseOrFinished.finished === "object")
-      ) {
-        send = mergeDeep(send, dont_increaseOrFinished);
-      } else {
-        send.increase = dont_increaseOrFinished;
-      }
-
-      process.send(send);
+      });
     }
   );
 });
@@ -222,12 +218,9 @@ function listOptions() {
  *
  */
 function main() {
-  var __total = { complete: 0, forced: 0 };
-  var makes = {};
-  var isStopedSeconds_bars = (Array(options.qtd_process + 1)).fill(0);
+  var isFrezeeSeconds_bars = (Array(options.qtd_process + 1)).fill(0);
   var progressbars = (Array(options.qtd_process)).fill(0);
-  var processStarted = (Array(options.qtd_process)).fill(false);
-  var totalPerProcess = [];
+  var total_makes_by_process = (Array(options.qtd_process)).fill(0);
 
   listOptions();
 
@@ -247,8 +240,8 @@ function main() {
     , elapsed: "00d, 00:00:00".length
     , Remaining: "00d, 00:00:00".length
     , id: 3
-    , lat: "000.".length + options.precision_lt
-    , long: "000.".length + options.precision_lg
+    , lat: "-000.".length + options.precision_lt
+    , long: "-000".length
     , p_percent: "000.00".length
     , p_total: localNumberFormat(options.qtd_longitudes).length
     , p_completed: localNumberFormat(options.qtd_longitudes).length
@@ -276,21 +269,23 @@ function main() {
       }
 
       function isfreeze(index) {
-        return (typeof isStopedSeconds_bars[index] !== "boolean") ||
-          (isStopedSeconds_bars[index] > isFreezeSeconds);
+        return (
+          (typeof isFrezeeSeconds_bars[index] === "number") &&
+          (isFrezeeSeconds_bars[index] > options.isFreezeSeconds)
+        );
       }
 
       function newBar(isMain, index, percent, size, ok, unok) {
-        ok = (typeof ok === 'string' && ok.length === 1) ? ok : OPT.barCompleteString;
+        ok = (typeof ok === 'string' && ok.length === 1) ? ok : "\u25A0";
         unok = (typeof unok === 'string' && unok.length === 1) ? unok : '\u2500';
         const completed = Math.floor(percent * size);
         return (
           (isfreeze(index)
-            ? colors.redBright
+            ? colors.red
             : (
               isMain
-                ? colors.greenBright
-                : colors.cyan
+                ? colors.green
+                : colors.blue
             )
           )("".padStart(completed, ok))
         ) + colors.gray(unok.padStart(size - completed, unok));
@@ -317,8 +312,8 @@ function main() {
           ))(
             (
               isMain
-                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ Built: {builts} (${pbuilts}%) ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining} "
-                : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total}"
+                ? "---: |{gbar}| {percent}% \u2192 {completed}/{total} ▐ Built: {builts} ({pbuilts}%) ▐ {ms} s/item, Elapsed: {elapsed}, Remaining: {remaining} "
+                : "{id}: |{gbar}| {percent}% \u2192 {completed}/{total}, first: {first} ▐ {lat} x {long} |{pbar}| {p_percent}% \u2192 {p_completed}/{p_total} ▐ {status}"
             )
               .replace(
                 /\{([^\}\{ ]+)\}/g,
@@ -329,26 +324,26 @@ function main() {
                     if (!has(ctts, key)) {
                       if (key == "gbar") {
                         return newBar(
-                          false,
+                          isMain,
+                          has(ctts, 'id') ? ctts.id : 0,
                           (
                             has(ctts, 'total')
                               ? ctts.completed / ctts.total
-                              : "???"
+                              : 0
                           ),
-                          0,
                           OPT.barsize
                         );
                       }
 
                       if (key == "pbar") {
                         return newBar(
-                          false,
+                          isMain,
+                          has(ctts, 'id') ? ctts.id : 0,
                           (
                             has(ctts, 'p_total')
                               ? ctts.p_completed / ctts.p_total
-                              : "???"
+                              : .5
                           ),
-                          0,
                           Math.round(OPT.barsize / 2)
                         );
                       }
@@ -423,20 +418,52 @@ function main() {
         remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
         ms_by_item = localNumberFormat(runtime_byitem_calcs, 3, [7, " "]);
       }
-
+      /**
+       *
+       *   {
+              id: k,
+              first_lat: msg.first_lat,
+              latitude: msg.latitude,
+              longitude: msg.longitude,
+            }
+       */
       return progressText(isMain, {
         id: id,
         first: values.first_lat,
         lapse: lapse,
         ms: ms_by_item,
+        lat: values.latitude,
+        long: values.longitude,
         builts: isMain ? values.builts : 0,
         pbuilts: isMain ? values.builts / options.qtd_all * 100 : 0,
         elapsed: lapse,
         remaining: remaining,
-        p_completed: params.value,
+        p_completed: isMain ? 0 : (params.value % options.qtd_longitudes),
         p_total: options.qtd_longitudes,
-        completed: isMain ? params.value : (values.global_makes ? values.global_makes : params.value),
+        completed: params.value,
         total: isMain ? options.qtd_all : options.qtd_by_process,
+        status: (
+          (typeof values.lgv === "object")
+            ? colors.bgGreenBright(colors.black(" OK "))
+            : (
+              ((typeof values.lgv === "number") && (isFinite(values.lgv)))
+                ? (
+                  /**
+                   *  adress_isocean
+                    , adress_isforced_ignore
+                    , adress_isinvalid_tz
+                    , adress_unacceptable_tz
+                    , adress_skipped
+                   */
+                  (
+                    values.lgv === adress_unchanged
+                      ? colors.bgCyan(" UNCHANGED ")
+                      : colors.bgBlue(" IGNORED ")
+                  )
+                )
+                : colors.bgMagentaBright(" UNKNOW-STATUS ")
+            )
+        )
       });
     }
 
@@ -456,90 +483,45 @@ function main() {
       return nn;
     })())
       .on('message', (msg) => {
-        ((progress) => {
-          if (
-            (typeof msg !== 'object') ||
-            (!has(msg, 'id'))
-          ) {
-            return;
+        if (has(msg, "error")) {
+          "Child '", k, "' exited with data:" + msg.error;
+          return terminate();
+        }
+
+        if (isFrezeeSeconds_bars[k] === true) {
+          return;
+        }
+
+        if (
+          (typeof msg !== 'object') ||
+          (!has(msg, 'id'))
+        ) {
+          return;
+        }
+
+        builts_skippeds_status[k] = has(msg, 'builts_skippeds') ? msg.builts_skippeds : builts_skippeds_status[k];
+        //console.log(builts_skippeds_status[k]);
+
+        //if (isFrezeeSeconds_bars[k] > 0) {
+        isFrezeeSeconds_bars[k] = 0;
+
+        total_makes_by_process[k] = builts_skippeds_status[k][0] + builts_skippeds_status[k][1];
+
+        bar.update(
+          total_makes_by_process[k],
+          {
+            id: k,
+            first_lat: msg.first_lat,
+            latitude: msg.latitude,
+            longitude: msg.longitude,
+            lgv: msg.last_generated_value
           }
+        );
 
-          if (has(msg, "error")) {
-            console.error("Child '", k, "' exited with data:", msg.error);
-            return terminate();
-          }
-
-          builts_skippeds_status[k] = has(msg, 'builts_skippeds') ? msg.builts_skippeds : builts_skippeds_status[k];
-
-          isStopedSeconds_bars[k] = 0;
-
-          let part_val = 0, global_val = 0;
-
-          if (has(msg, "increase") && msg.increase) {
-            if (!processStarted[k]) {
-              processStarted[k] = true;
-              totalPerProcess.push(msg.segs * options.qtd_decpart_latitudes);
-            }
-
-            if (typeof msg.increase === "numeric") {
-              __counter.forced.part_val += msg.increase;
-              __counter.forced.global_val += msg.increase;
-              __total.forced += msg.increase;
-            } else {
-              __counter.comleted.part_val += options.decimal_lg_size;
-              __counter.comleted.global_val += options.decimal_lg_size;
-              __total.completed += options.decimal_lg_size;
-            }
-
-            __counter.forced.part_val = (
-              (__counter.forced.part_val > (__counter.comleted.part_val + options.decimal_lg_size))
-            )
-              ? (__counter.comleted.part_val + options.decimal_lg_size)
-              : __counter.forced.part_val;
-
-            __counter.forced.global_val = (
-              (__counter.forced.global_val > (__counter.comleted.global_val + options.decimal_lg_size))
-            )
-              ? (__counter.comleted.part_val + options.decimal_lg_size)
-              : __counter.forced.global_val;
-
-            part_val = __counter.comleted.part_val > __counter.forced.part_val
-              ? __counter.comleted.part_val
-              : __counter.forced.part_val;
-
-            global_val = __counter.comleted.global_val > __counter.forced.global_val
-              ? __counter.comleted.global_val
-              : __counter.forced.global_val;
-
-            if ((part_val % options.qtd_longitudes) === 0) {
-              if (__counter.comleted.part_val > __counter.forced.part_val) {
-                __counter.comleted.part_val = 0;
-              } else {
-                __counter.forced.part_val = 0;
-              }
-            }
-          }
-
-          if (has(msg, "finished") && (typeof msg.finished === "object")) {
-            isStopedSeconds_bars[k] === true;
-            progress(msg, [options.qtd_longitudes, options.qtd_by_process]);
-            bar.stop();
-            makes = mergeDeep(makes, msg.finished);
-          }
-
-          progress(msg, [part_val, global_val]);
-        })((msg, val) => {
-          bar.update(
-            val[0],
-            {
-              global_makes: val[1],
-              id: k,
-              first_lat: msg.first_lat,
-              latitude: msg.latitude,
-              longitude: msg.longitude,
-            }
-          );
-        });
+        if (has(msg, "finished") && (typeof msg.finished === "object")) {
+          isFrezeeSeconds_bars[k] === true;
+        }
+        //}
       })
       .send({ start: k });
   });
@@ -551,41 +533,43 @@ function main() {
    * UPDATE GLOBAL PROGRESS BART
    */
   intervalo = setInterval(() => {
+    isFrezeeSeconds_bars[isFrezeeSeconds_bars.length - 1] = 0;
+    let builts = 0;
+
+    for (var k = 0; k < progressbars.length; k++) {
+      builts += builts_skippeds_status[k][0];
+
+      if (typeof isFrezeeSeconds_bars[k] !== 'boolean') {
+        isFrezeeSeconds_bars[k]++;
+
+        if (isFrezeeSeconds_bars[k] > options.isFreezeSeconds) {
+          isFrezeeSeconds_bars[isFrezeeSeconds_bars.length - 1] = options.isFreezeSeconds + 1;
+          progressbars[k].update(null);
+        }
+      }
+    }
+
     if (!bar_total) {
-      if (totalPerProcess.length == options.qtd_process) {
+      if (total_makes_by_process.length == options.qtd_process) {
         bar_total = multibar.create(options.qtd_all, 0);
       }
+    }
+
+    let tot = 0;
+    for (let k = 0; k < total_makes_by_process.length; k++) {
+      tot += total_makes_by_process[k];
     }
 
     if (!bar_total) {
       return;
     }
 
-    const tot = __total.completed.part_val > __total.forced.part_val
-      ? __total.completed.part_val
-      : __total.forced.part_val
-
-
-    isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = 0;
-    let builts = 0;
-
-    for (var k = 0; k < progressbars.length; k++) {
-      builts += builts_skippeds_status[k][0];
-
-      if (typeof isStopedSeconds_bars[k] !== 'boolean') {
-        isStopedSeconds_bars[k]++;
-
-        if (isStopedSeconds_bars[k] > options.isFreezeSeconds) {
-          isStopedSeconds_bars[isStopedSeconds_bars.length - 1] = options.isFreezeSeconds + 1;
-          progressbars[k].update(null);
-        }
-      }
-    }
-
-    bar_total.update(tot, {
+    bar_total.update(
+      tot, {
       id: -1,
       builts
-    });
+    }
+    );
 
     if (tot >= options.qtd_all) {
       bar_total.stop();

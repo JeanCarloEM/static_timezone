@@ -17,7 +17,8 @@ export const adress_isocean = 1;
 export const adress_isforced_ignore = 3;
 export const adress_isinvalid_tz = 2;
 export const adress_unacceptable_tz = 3;
-export const adress_skipped = 4;
+export const adress_unchanged = 4;
+
 
 function delsaveds(p) {
   delfile(`${p}${default_extension}`);
@@ -33,13 +34,15 @@ function delsaveds(p) {
  * @returns
  */
 function makeAdressFile(options, path, tz, fail) {
+  console.log("----", fpath, "\n");
+
   try {
     if (options.save_json) {
-      writedata(`${path}.json`, JSON.stringify({ tz: `${zone}` }, null, 0));
+      writedata(`${path}.json`, JSON.stringify({ tz: `${tz}` }, null, 0));
     }
 
     if (options.save_raw) {
-      writedata(`${path}${default_extension}`, `${zone}`);
+      writedata(`${path}${default_extension}`, `${tz}`);
     }
   } catch (e) {
     return typeof fail === 'function' && fail(e, "writeAdress", 1);
@@ -155,9 +158,9 @@ export function writeAdress(
 
     defVal = (
       (!zone)
-        ? adress_skipped
+        ? adress_unchanged
         : (((value) => {
-          if (!typeof v === 'string') {
+          if (typeof value === 'string') {
             makeAdressFile(options, full_path, value, fail)
           }
           return value;

@@ -14,7 +14,7 @@ export function triggerError(process, msg, funcName, code, data) {
         process, msg, funcName, code, data
       }
     });
-  } catch (error) {
+  } catch (e) {
   }
 
 
@@ -26,7 +26,6 @@ export function triggerError(process, msg, funcName, code, data) {
     , ":"
     , colors.redBright(msg)
   ].concat(typeof data !== "undefined" ? ["\nData:", data, JSON.stringify(data), "\n"] : []).join(' ');
-
 
   throw new Error(err);
 }
@@ -270,8 +269,10 @@ export function loopDecimalPart(
   clback,
   start_at
 ) {
+  const initial = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)));
+
   for (
-    var decimal = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)));
+    var decimal = initial;
     decimal >= 0;
     decimal -= multiply
   ) {
@@ -296,7 +297,18 @@ export function dirname(x) {
  *
  * @param {*} fpath
  */
-export function writedata(fpath, ctt) {
+export function writedata(fpath, ctt, ignoreEmpty) {
+  if (
+    ignoreEmpty &&
+    (
+      (ctt.trim().length == 0) ||
+      ctt === "{}" ||
+      ctt === "[]"
+    )
+  ) {
+    return;
+  }
+
   const dir = PATH.dirname(fpath);
   !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(`${fpath}`, ctt, 'ascii');

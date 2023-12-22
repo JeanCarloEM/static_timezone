@@ -54,19 +54,25 @@ export function makeLat(
     lt,
     options.lat_min,
     options.lat_max,
-    (latitude) => {
+    (latitude, decimal) => {
       const saved_process_path_tmp = `${process_path}/${localNumberFormat(Math.abs(latitude), options.precision_lt)}.tmp.data.json`;
       const saved_process_path_finished = `${options.destPath}/${parseInt(latitude)}/${(latitude % 1).toFixed(options.precision_lt).substring(2)}.data.json`;
 
-      let lt_items = JSON.parse(
-        fexists(saved_process_path_finished)
-          ? fread(saved_process_path_finished)
-          : (
-            fexists(saved_process_path_tmp)
-              ? fread(saved_process_path_tmp)
-              : '{}'
-          )
-      );
+      let lt_items = {};
+
+      try {
+        lt_items = JSON.parse(
+          fexists(saved_process_path_finished)
+            ? fread(saved_process_path_finished)
+            : (
+              fexists(saved_process_path_tmp)
+                ? fread(saved_process_path_tmp)
+                : '{}'
+            )
+        );
+      } catch (e) {
+        fail(null, "Fail to load saved data", "makeLat", 0, e);
+      }
 
       for (
         var lg = (
@@ -90,24 +96,26 @@ export function makeLat(
             fail,
             update_generated_status,
             /**
-             *
+             * written_or_deleted_callback()
              * @param {*} builtOrDeleted
              */
             (builtOrDeleted) => {
               const idk = (builtOrDeleted > 0) ? 0 : (builtOrDeleted < 0 ? 1 : false);
 
-              if (idk !== false) {
-                return written_or_deleted_count[idk]++;
+              if (idk === false) {
+                return fail(null, "Returned 'builtOrDeleted' is not valid", "makeLat", 0, builtOrDeleted);
               }
+
+              written_or_deleted_count[idk]++;
             }
           )
         );
 
-        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0));
+        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0), true);
         update_saved_options(latitude, lg, written_or_deleted_count);
       }
 
-      writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0));
+      writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0), true);
       delfile(saved_process_path_tmp);
     },
     lt_dec

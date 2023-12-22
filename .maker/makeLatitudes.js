@@ -58,19 +58,23 @@ export function makeLatitudes(
     makeLat(
       options,
       lt,
-      (PROCESS.start_lat % 1) * options.precision,
+      first_retored_runtime ? (PROCESS.start_lat % 1) * options.precision_lt : options.decimal_lt_size,
       first_retored_runtime ? PROCESS.start_long : options.long_min,
       PROCESS.process_path,
       fail,
       /**
+       * update_saved_options()
        *
        * @param {*} latitude
        * @param {*} long_int_part
-       * @param {*} update_saved_options
+       * @param {*} written_or_deleted_count
        */
-      (latitude, long_int_part, update_saved_options) => {
-        builts_skippeds_status[0] += update_saved_options[0];
-        builts_skippeds_status[1] += update_saved_options[1];
+      (latitude, long_int_part, written_or_deleted_count) => {
+        last_generated_latitude = latitude;
+        last_generated_longitude = long_int_part;
+
+        builts_skippeds_status[0] += written_or_deleted_count[0];
+        builts_skippeds_status[1] += written_or_deleted_count[1];
 
         /* WRITE RUNTIME CONDITIONS */
         writedata(
@@ -87,7 +91,7 @@ export function makeLatitudes(
           )
         );
 
-        update_progress(id, PROCESS.first_lat, latitude, long_int_part, last_generated_value, false, builts_skippeds_status);
+        update_progress(id, PROCESS.first_process_lat, latitude, long_int_part, last_generated_value, builts_skippeds_status);
       },
       /**
        * update_generated_status()
@@ -96,17 +100,6 @@ export function makeLatitudes(
        * @returns
        */
       (generated_value) => {
-        if (typeof generated_value === "boolean") {
-          return update_progress(
-            id,
-            PROCESS.first_process_lat,
-            last_generated_latitude,
-            last_generated_longitude,
-            generated_value,
-            force_update_at
-          );
-        }
-
         if ((typeof generated_value) !== (typeof last_generated_value)) {
           last_generated_value = generated_value;
           update_progress(
@@ -115,7 +108,7 @@ export function makeLatitudes(
             last_generated_latitude,
             last_generated_longitude,
             generated_value,
-            true
+            builts_skippeds_status
           );
         }
       }
