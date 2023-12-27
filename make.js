@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { all_tz_continents, TZs } from "./.maker/TZs.js"
 
@@ -71,6 +71,39 @@ const options = mergeDeep({
   padstr_total_all: localNumberFormat(___pre_5.qtd_all, 2).length,
 }, ___pre_5);
 
+process.log = (msg, funcName, code, data) => {
+  triggerMessage(
+    'log'
+    , has(process, "custom") && has(process.custom, "start") ? process.custom.start : -1
+    , msg
+    , funcName
+    , code
+    , data
+  );
+}
+
+process.warn = (msg, funcName, code, data) => {
+  triggerMessage(
+    'warn'
+    , has(process, "custom") && has(process.custom, "start") ? process.custom.start : -1
+    , msg
+    , funcName
+    , code
+    , data
+  );
+}
+
+process.erro = (msg, funcName, code, data) => {
+  triggerMessage(
+    'error'
+    , has(process, "custom") && has(process.custom, "start") ? process.custom.start : -1
+    , msg
+    , funcName
+    , code
+    , data
+  );
+}
+
 /**
  *
  */
@@ -84,6 +117,10 @@ process.on('message', (msg) => {
     console.error(`>>> Segmento '${msg.start}' FORA do range`);
     return;
   }
+
+  process.custom = {
+    start: msg.start
+  };
 
   makeLatitudes(
     options,
@@ -115,10 +152,11 @@ process.on('message', (msg) => {
      * @param {*} dont_increaseOrFinished
      */
     (id, first_lat, latitude, long_int_part, last_generated_value, builts_skippeds) => {
+      //id === 2 && console.log("\n\n[[main]]-----------------------------------------", id, `'${latitude}'`, "\n\n");
       process.send({
         id: id,
         first_lat: first_lat,
-        latitude: latitude.toFixed(options.precision),
+        latitude: parseFloat(latitude).toFixed(options.precision_lt),
         longitude: long_int_part,
         last_generated_value: last_generated_value,
         builts_skippeds: builts_skippeds
@@ -142,7 +180,7 @@ function terminate() {
  */
 function secondsFormated(s) {
   if (typeof s !== 'number' || !isFinite(s)) {
-    throw new Error(`[secondsFormated] Invalid seconds is passed: '${s}'`);
+    throw new Error(`[secondsFormated] Invalid seconds. Is passed: '${s}'`);
   }
 
   const d = parseInt(s / 86400);
@@ -295,6 +333,7 @@ function main() {
       }
 
       function progressText(isMain, ctts) {
+        return "---";
         if (has(ctts, 'total') && has(ctts, 'complected') && ctts.comleted > ctts.total) {
           throw new Error(`[progressText] in process '${ctts.id}': completed > total`);
         }
@@ -417,8 +456,15 @@ function main() {
         lapse = secondsFormated(Math.floor(runtime / 1000));
 
         const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
+        console.log("\n???", runtime_byitem_calcs, params.total, params.value);
 
-        remaining = secondsFormated(Math.round(runtime_byitem_calcs * (params.total - params.value)));
+        remaining = secondsFormated(
+          Math.round(
+            runtime_byitem_calcs * (
+              params.total - params.value
+            )
+          )
+        );
         ms_by_item = localNumberFormat(runtime_byitem_calcs, 3, [7, " "]);
       }
       /**
@@ -503,12 +549,17 @@ function main() {
         }
 
         builts_skippeds_status[k] = has(msg, 'builts_skippeds') ? msg.builts_skippeds : builts_skippeds_status[k];
+        console.log(msg.builts_skippeds);
         //console.log(builts_skippeds_status[k]);
 
         //if (isFrezeeSeconds_bars[k] > 0) {
         isFrezeeSeconds_bars[k] = 0;
 
         total_makes_by_process[k] = builts_skippeds_status[k][0] + builts_skippeds_status[k][1];
+        if (!isFinite(total_makes_by_process[k])) {
+          console.log(builts_skippeds_status[k]);
+          throw new Error(`[tot[k]] = '${total_makes_by_process[k]}'`, builts_skippeds_status[k]);
+        }
 
         bar.update(
           total_makes_by_process[k],
@@ -561,6 +612,10 @@ function main() {
     let tot = 0;
     for (let k = 0; k < total_makes_by_process.length; k++) {
       tot += total_makes_by_process[k];
+
+      if (!isFinite(tot)) {
+        throw new Error(`[tot sum] sum tot is invalid. um: '${total_makes_by_process[k]}'`);
+      }
     }
 
     if (!bar_total) {

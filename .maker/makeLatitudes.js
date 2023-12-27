@@ -1,7 +1,7 @@
 import { writeBatch } from "./writeBatch.js";
 
 import { makeLat } from "./makeLat.js";
-import { readSavedProcessingPos, checkParameters, writedata } from "./commom.js";
+import { fixDecimal, readSavedProcessingPos, checkParameters, writedata } from "./commom.js";
 import { force_update_at } from "./writeBatch.js";
 
 /**
@@ -53,12 +53,29 @@ export function makeLatitudes(
   let last_generated_latitude = PROCESS.first_process_lat;
   let last_generated_longitude = options.long_min;
   let builts_skippeds_status = [PROCESS.data.builts_skippeds[0], PROCESS.data.builts_skippeds[1]];
+  id === 2 && process.log(
+    ":::",
+    "makeLatitudes",
+    0,
+    {
+      first_process_lat: PROCESS.first_process_lat,
+      start_lat: PROCESS.start_lat,
+    });
 
   for (var lt = Math.round(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
+    id === 2 && process.error(
+      ":::",
+      "makeLatitudes",
+      1,
+      {
+        first_process_lat: PROCESS.first_process_lat,
+        lt
+      }
+    );
     makeLat(
       options,
       lt,
-      first_retored_runtime ? (PROCESS.start_lat % 1) * options.precision_lt : options.decimal_lt_size,
+      fixDecimal(first_retored_runtime ? (PROCESS.start_lat % 1) * options.precision_lt : options.decimal_lt_size, options.precision_lt),
       first_retored_runtime ? PROCESS.start_long : options.long_min,
       PROCESS.process_path,
       fail,
@@ -70,6 +87,7 @@ export function makeLatitudes(
        * @param {*} written_or_deleted_count
        */
       (latitude, long_int_part, written_or_deleted_count) => {
+        //id===2&&process.log("<<makeLatitudes>>", latitude);
         last_generated_latitude = latitude;
         last_generated_longitude = long_int_part;
 
@@ -91,6 +109,7 @@ export function makeLatitudes(
           )
         );
 
+        //id===2&&process.log("<<makeLatitudes>>(2)", latitude);
         update_progress(id, PROCESS.first_process_lat, latitude, long_int_part, last_generated_value, builts_skippeds_status);
       },
       /**
@@ -112,6 +131,7 @@ export function makeLatitudes(
           );
         }
       }
+      , id
     );
 
     first_retored_runtime = false;

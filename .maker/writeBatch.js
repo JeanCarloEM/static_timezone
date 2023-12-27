@@ -10,7 +10,8 @@ export function writeBatch(
   allItems,
   fail,
   update_generated_status,
-  written_or_deleted_callback
+  written_or_deleted_callback,
+  id
 ) {
   checkParameters(
     fail, 'writeBatch',
@@ -43,6 +44,13 @@ export function writeBatch(
     ]
   );
 
+  id === 2 && process.log(
+    "$$$", 'writeBatch', 1, {
+    latitude,
+    long,
+  });
+
+
   let batch_items = {};
   let last_generated_value = {}
   let loop_count = 0;
@@ -60,9 +68,19 @@ export function writeBatch(
         return;
       }
 
+      id === 2 && process.log(
+        "\\\\\\\\",
+        'writeBatch',
+        1,
+        {
+          latitude,
+          long,
+          longitude
+        });
+
       const written_value = writeAdress(
         options,
-        latitude,
+        (latitude),
         longitude,
         allItems,
         /**

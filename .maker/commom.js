@@ -7,6 +7,44 @@ import colors from 'ansi-colors';
 
 const _argv = minimist(process.argv.slice(2));
 
+export function LOG(...args) {
+  console.log(...args);
+}
+
+export function fixDecimal(x, count) {
+  return parseFloat(x.toFixed(count));
+}
+
+export function triggerMessage(level, process, msg, funcName, code, data) {
+  level = level.toLowerCase().trim();
+  const message = [
+    (
+      level === "error"
+        ? colors.bgRedBright
+        : (
+          level === 'warn'
+            ? colors.bgYellowBright
+            : colors.bgCyanBright
+        )
+    )(colors.black(` ${level.toUpperCase()} `))
+    , colors.bgBlueBright(` ${process >= 0 ? process : "MAIN"} `),
+    , colors.bgWhiteBright(colors.black(` ${funcName} `))
+    , colors.yellow(`(${code})`)
+    , ":"
+    , colors.redBright(msg)
+  ].concat(typeof data !== "undefined" ? ["Data:", (() => {
+    try {
+      return JSON.stringify(data);
+    } catch (error) {
+      return data;
+    }
+
+  })(), "\n"] : []).join(' ');
+
+  console.log(message);
+  return message;
+}
+
 export function triggerError(process, msg, funcName, code, data) {
   try {
     process.send({
@@ -17,17 +55,7 @@ export function triggerError(process, msg, funcName, code, data) {
   } catch (e) {
   }
 
-
-  const err = [
-    colors.bgBlueBright(` Process ${process} ->`),
-    , colors.yellow(`[${code}]`)
-    , "|"
-    , colors.bgRed(" " + funcName + " ")
-    , ":"
-    , colors.redBright(msg)
-  ].concat(typeof data !== "undefined" ? ["\nData:", data, JSON.stringify(data), "\n"] : []).join(' ');
-
-  throw new Error(err);
+  throw new Error(triggerMessage('error', process, msg, funcName, code, data));
 }
 
 /**
@@ -50,8 +78,8 @@ export function readSavedProcessingPos(options, id, fail, fpath) {
     }
 
     return {
-      latitude: false,
-      longitude_int_part: false,
+      latitude: -1000,
+      longitude_int_part: -1000,
       builts_skippeds: [0, 0],
       id: id,
       params: options
@@ -63,8 +91,8 @@ export function readSavedProcessingPos(options, id, fail, fpath) {
   }
 
   const first_process_lat = options.lat_min + id;
-  const start_lat = saved.latitude === false ? first_process_lat : saved.latitude;
-  const start_long = saved.longitude_int_part === false ? options.long_min : parseInt(saved.longitude_int_part);
+  const start_lat = saved.latitude === -1000 ? first_process_lat : saved.latitude;
+  const start_long = saved.longitude_int_part === -1000 ? options.long_min : parseInt(saved.longitude_int_part);
 
   return {
     process_path,
@@ -267,9 +295,23 @@ export function loopDecimalPart(
   min,
   max,
   clback,
-  start_at
+  start_at,
+  id
 ) {
-  const initial = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)));
+  const initial = (() => {
+    let pre = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)))
+    pre = pre < 0 ? pre * decimal_size : pre;
+    return (pre == decimal_size) ? pre - multiply : pre;
+  })();
+
+  id === 2 && console.log("\t\t>>>", id, "loopDecimalPart",
+    `intpart: ${intpart}`,
+    `initial: ${initial}`,
+    `decimal_size: ${decimal_size}`,
+    `multiply: ${multiply}`,
+    `min: ${min}`,
+    `max: ${max}`,
+    `start_at: ${start_at}`, "\n\n");
 
   for (
     var decimal = initial;
@@ -277,6 +319,8 @@ export function loopDecimalPart(
     decimal -= multiply
   ) {
     const item = (intpart >= 0 ? 1. : - 1.) * (Math.abs(parseFloat(intpart)) + (decimal / decimal_size));
+
+    id === 2 && console.log("\t\t\t---", id, `decimal: ${decimal}`, `item: ${item}`, "\n\n")
 
     if ((item < min) || (item > max)) {
       continue;
@@ -363,7 +407,7 @@ export function isAcceptableTZ(tz) {
     mt &&
     Array.isArray(mt) &&
     (mt.length >= 2) &&
-    (new RegExp(`"${mt[1]}/`, 'i')).test(mt[1])
+    (new RegExp(`"${mt[1]}\/`, 'i')).test(ac)
   );
 };
 

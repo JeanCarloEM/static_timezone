@@ -34,8 +34,6 @@ function delsaveds(p) {
  * @returns
  */
 function makeAdressFile(options, path, tz, fail) {
-  console.log("----", fpath, "\n");
-
   try {
     if (options.save_json) {
       writedata(`${path}.json`, JSON.stringify({ tz: `${tz}` }, null, 0));
@@ -143,6 +141,7 @@ export function writeAdress(
       if (!isAcceptableTZ(calczone)) {
         return adress_unacceptable_tz;
       }
+      console.log("\n\n", "--------------", "\n");
 
       return (
         presaved
@@ -178,7 +177,15 @@ export function writeAdress(
 
 
   (typeof update_generated_status === 'function') && update_generated_status(defVal);
-
+  process.log(
+    "===",
+    'writeAdress',
+    0,
+    {
+      latitude,
+      longitude,
+      defVal
+    });
   return {
     [latitude.toFixed(options.precision_lt)]: {
       [longitude.toFixed(options.precision_lg)]: defVal
