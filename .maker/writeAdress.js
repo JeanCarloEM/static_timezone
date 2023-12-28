@@ -9,15 +9,15 @@ import {
   writedata
 } from "./commom.js";
 import { forceInclude } from "./forceInclude.js"
-import { forceIgnore } from "./forceIgnore.js"
+import { forceIgnore as ignore_list } from "./forceIgnore.js"
 
 export const default_extension = ".txt";
 
 export const adress_isocean = 1;
-export const adress_isforced_ignore = 3;
 export const adress_isinvalid_tz = 2;
-export const adress_unacceptable_tz = 3;
+export const adress_isforced_ignore = 3;
 export const adress_unchanged = 4;
+export const adress_unacceptable_tz = 5;
 
 
 function delsaveds(p) {
@@ -97,23 +97,31 @@ export function writeAdress(
     ]
   );
 
-  const ltpath = String(latitude.toFixed(options.precision_lt)).replace(/[,\.]/, '/');
-  const lgpath = String(longitude.toFixed(options.precision_lg)).replace(/[,\.]/g, '/');
-  const full_path = `${options.destPath}/lat/${ltpath}/long/${lgpath}`;
+  false && process.log(
+    "===",
+    'writeAdress',
+    0,
+    {
+      latitude,
+      longitude
+    });
 
-  const is_ocean = isOcean(latitude, longitude);
-  const is_forced_Ignored = !is_ocean && checkIsIncludeInList(latitude, longitude, forceIgnore);
+  const lat_int = Math.floor(latitude);
+  const lat_dec = `${Math.round((Math.abs(latitude) % 1) * options.decimal_lt_size)}`.padStart(options.precision_lt, '0');
+  const lg_int = Math.floor(longitude);
+  const lg_dec = `${Math.round((Math.abs(longitude) % 1) * options.decimal_lg_size)}`.padStart(options.precision_lg, '0');
 
-  let defVal = 0;
+  const full_path = `${options.destPath}/lat/${lat_int}/${lat_dec}/long/${lg_int}/${lg_dec}`;
 
-  /** IGNORE OCEAN */
-  if (
-    (is_ocean || is_forced_Ignored) &&
-    // forceInclude takes precedence over other options
-    !checkIsIncludeInList(latitude, longitude, forceInclude)
-  ) {
-    defVal = is_ocean ? adress_isocean : adress_isforced_ignore;
-  }
+  let defVal = (
+    isOcean(latitude, longitude)
+      ? adress_isocean
+      : (
+        checkIsIncludeInList(latitude, longitude, ignore_list)
+          ? adress_isforced_ignore
+          : false
+      )
+  );
 
   if (!defVal) {
     /**
@@ -123,11 +131,13 @@ export function writeAdress(
     const zone = ((() => {
       const presaved = (
         (
-          has(allItems, `${latitude}`) &&
-          has(allItems[`${latitude}`], `${longitude}`)
+          has(allItems, lat_int) &&
+          has(allItems[lat_int], lat_dec) &&
+          has(allItems[lat_int][lat_dec], lg_int) &&
+          has(allItems[lat_int][lat_dec][lg_int], lg_dec)
         )
           // saved
-          ? `${allItems[`${latitude}`][`${longitude}`]}`.trim()
+          ? `${allItems[lat_int][lat_dec][lg_int][lg_dec]}`.trim()
           // not Saved
           : false
       );
@@ -141,7 +151,7 @@ export function writeAdress(
       if (!isAcceptableTZ(calczone)) {
         return adress_unacceptable_tz;
       }
-      console.log("\n\n", "--------------", "\n");
+      console.log("\n\n", "-SUCESSO-------------", "\n");
 
       return (
         presaved
@@ -175,20 +185,15 @@ export function writeAdress(
   (typeof written_or_deleted_callback === 'function') &&
     written_or_deleted_callback((typeof defVal === 'string') ? 1 : -1);
 
-
   (typeof update_generated_status === 'function') && update_generated_status(defVal);
-  process.log(
-    "===",
-    'writeAdress',
-    0,
-    {
-      latitude,
-      longitude,
-      defVal
-    });
+
   return {
-    [latitude.toFixed(options.precision_lt)]: {
-      [longitude.toFixed(options.precision_lg)]: defVal
+    [lat_int]: {
+      [lat_dec]: {
+        [lg_int]: {
+          [lg_dec]: defVal
+        }
+      }
     }
   };
 }

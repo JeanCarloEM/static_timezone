@@ -49,6 +49,22 @@ export function makeLat(
     ]
   );
 
+  function read_save_items(finished, tmp) {
+    try {
+      return JSON.parse(
+        fexists(finished)
+          ? fread(finished)
+          : (
+            fexists(tmp)
+              ? fread(tmp)
+              : '{}'
+          )
+      );
+    } catch (e) {
+      fail(null, "Fail to load saved data", "makeLat", 0, e);
+    }
+  }
+
   id === 2 && process.log(
     "###",
     "makeLat",
@@ -66,7 +82,7 @@ export function makeLat(
     options.lat_min,
     options.lat_max,
     (_latitude, decimal) => {
-      id === 2 && process.warn(
+      id === 0 && process.warn(
         "+++",
         "makeLat",
         1,
@@ -78,24 +94,11 @@ export function makeLat(
 
       if (_latitude % 1 === 0) return;
       const latitude = _latitude;
-      const saved_process_path_tmp = `${process_path}/${localNumberFormat(Math.abs((latitude)), options.precision_lt)}.tmp.data.json`;
-      const saved_process_path_finished = `${options.destPath}/${parseInt(latitude)}/${(latitude % 1).toFixed(options.precision_lt).substring(2)}.data.json`;
+      const lat_dec = `${Math.round((Math.abs(latitude) % 1) * options.decimal_lt_size)}`.padStart(options.precision_lt, '0');
 
-      let lt_items = {};
-
-      try {
-        lt_items = JSON.parse(
-          fexists(saved_process_path_finished)
-            ? fread(saved_process_path_finished)
-            : (
-              fexists(saved_process_path_tmp)
-                ? fread(saved_process_path_tmp)
-                : '{}'
-            )
-        );
-      } catch (e) {
-        fail(null, "Fail to load saved data", "makeLat", 0, e);
-      }
+      const saved_process_path_tmp = `${process_path}/${parseInt(lt)}.${lat_dec}.tmp.data.json`;
+      const saved_process_path_finished = `${options.destPath}/${parseInt(lt)}/store/${lat_dec}.data.json`;
+      let lt_items = read_save_items(saved_process_path_finished, saved_process_path_tmp);
 
       for (
         var lg = (

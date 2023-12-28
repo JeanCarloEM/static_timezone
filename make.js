@@ -93,15 +93,15 @@ process.warn = (msg, funcName, code, data) => {
   );
 }
 
-process.erro = (msg, funcName, code, data) => {
-  triggerMessage(
+process.error = (msg, funcName, code, data) => {
+  throw new Error(triggerMessage(
     'error'
     , has(process, "custom") && has(process.custom, "start") ? process.custom.start : -1
     , msg
     , funcName
     , code
     , data
-  );
+  ));
 }
 
 /**
@@ -333,7 +333,7 @@ function main() {
       }
 
       function progressText(isMain, ctts) {
-        return "---";
+        //return "{progressText}";
         if (has(ctts, 'total') && has(ctts, 'complected') && ctts.comleted > ctts.total) {
           throw new Error(`[progressText] in process '${ctts.id}': completed > total`);
         }
@@ -456,7 +456,9 @@ function main() {
         lapse = secondsFormated(Math.floor(runtime / 1000));
 
         const runtime_byitem_calcs = params.value > 0 ? runtime / params.value / 1000 : 0;
-        console.log("\n???", runtime_byitem_calcs, params.total, params.value);
+        false && process.log("???", "multibar.MultiBar", {
+          runtime_byitem_calcs, total: params.total, value: params.value
+        });
 
         remaining = secondsFormated(
           Math.round(
@@ -549,7 +551,6 @@ function main() {
         }
 
         builts_skippeds_status[k] = has(msg, 'builts_skippeds') ? msg.builts_skippeds : builts_skippeds_status[k];
-        console.log(msg.builts_skippeds);
         //console.log(builts_skippeds_status[k]);
 
         //if (isFrezeeSeconds_bars[k] > 0) {
@@ -557,7 +558,6 @@ function main() {
 
         total_makes_by_process[k] = builts_skippeds_status[k][0] + builts_skippeds_status[k][1];
         if (!isFinite(total_makes_by_process[k])) {
-          console.log(builts_skippeds_status[k]);
           throw new Error(`[tot[k]] = '${total_makes_by_process[k]}'`, builts_skippeds_status[k]);
         }
 

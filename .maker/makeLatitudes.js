@@ -53,7 +53,7 @@ export function makeLatitudes(
   let last_generated_latitude = PROCESS.first_process_lat;
   let last_generated_longitude = options.long_min;
   let builts_skippeds_status = [PROCESS.data.builts_skippeds[0], PROCESS.data.builts_skippeds[1]];
-  id === 2 && process.log(
+  id === 0 && process.log(
     ":::",
     "makeLatitudes",
     0,
@@ -63,7 +63,7 @@ export function makeLatitudes(
     });
 
   for (var lt = Math.round(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
-    id === 2 && process.error(
+    id === 0 && process.error(
       ":::",
       "makeLatitudes",
       1,

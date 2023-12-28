@@ -298,29 +298,45 @@ export function loopDecimalPart(
   start_at,
   id
 ) {
-  const initial = (() => {
-    let pre = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)))
-    pre = pre < 0 ? pre * decimal_size : pre;
-    return (pre == decimal_size) ? pre - multiply : pre;
-  })();
+  const digits = Math.sqrt(decimal_size);
+  intpart = parseInt(intpart);
 
-  id === 2 && console.log("\t\t>>>", id, "loopDecimalPart",
-    `intpart: ${intpart}`,
-    `initial: ${initial}`,
-    `decimal_size: ${decimal_size}`,
-    `multiply: ${multiply}`,
-    `min: ${min}`,
-    `max: ${max}`,
-    `start_at: ${start_at}`, "\n\n");
+  const initial = parseFloat(
+    (
+      (
+        (() => {
+          let pre = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)))
+          pre = pre < 0 ? pre * decimal_size : pre;
+          return (pre == decimal_size) ? pre - multiply : pre;
+        })()
+      )
+      / decimal_size
+    ).toFixed(digits) + ""
+  );
+
+  multiply = parseFloat(Math.abs(multiply / decimal_size).toFixed(digits) + "");
+
+  false && process.log(">>>", 'loopDecimalPart', 0, {
+    intpart,
+    digits,
+    initial,
+    decimal_size,
+    multiply,
+    min,
+    max,
+    start_at
+  });
 
   for (
     var decimal = initial;
     decimal >= 0;
-    decimal -= multiply
+    decimal = parseFloat((decimal - multiply).toFixed(digits))
   ) {
-    const item = (intpart >= 0 ? 1. : - 1.) * (Math.abs(parseFloat(intpart)) + (decimal / decimal_size));
+    (`${decimal}`.length > (digits) + 2) && process.error("decimal length > precision", 'loopDecimalPart', 0, { decimal, multiply });
 
-    id === 2 && console.log("\t\t\t---", id, `decimal: ${decimal}`, `item: ${item}`, "\n\n")
+    const item = (intpart >= 0 ? 1. : - 1.) * (Math.abs(intpart) + decimal);
+
+    false && process.log("---()", 'loopDecimalPart', 0, { decimal, multiply, item });
 
     if ((item < min) || (item > max)) {
       continue;
@@ -423,22 +439,24 @@ export function getTZ(latitude, longitude) {
 
 export function checkIsIncludeInList(latitude, longitude, list) {
   for (let k = list; k < list.length; k++) {
+    const item = list[k];
+
     if (
       (
-        (list[k].length === 2) &&
-        (list[k][0] === latitude) &&
-        (list[k][1] === longitude)
+        (item.length === 2) &&
+        (item[0] === latitude) &&
+        (item[1] === longitude)
       ) ||
       (
-        (list[k].length === 4) &&
+        (item.length === 4) &&
 
-        /** top->dow (latitude) do maior para menos (contrário do consenso) */
-        (latitude <= list[k][0]) &&
-        /** left->right (longitude) do menor para o maior */
-        (longitude >= list[k][1]) &&
+        /** top->dow (latitude) from + to - */
+        (latitude <= item[0]) &&
+        /** left->right (longitude) from - to + */
+        (longitude >= item[1]) &&
 
-        (latitude >= list[k][2]) &&
-        (longitude <= list[k][3])
+        (latitude >= item[2]) &&
+        (longitude <= item[3])
       )
     ) {
       return true;

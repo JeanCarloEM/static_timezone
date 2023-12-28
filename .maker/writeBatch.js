@@ -44,7 +44,7 @@ export function writeBatch(
     ]
   );
 
-  id === 2 && process.log(
+  false && process.log(
     "$$$", 'writeBatch', 1, {
     latitude,
     long,
@@ -68,7 +68,7 @@ export function writeBatch(
         return;
       }
 
-      id === 2 && process.log(
+      false && process.log(
         "\\\\\\\\",
         'writeBatch',
         1,
@@ -114,7 +114,7 @@ export function writeBatch(
         (typeof update_generated_status === 'function') &&
         update_generated_status(last_generated_value);
 
-      mergeDeep(batch_items, typeof r == 'object' ? written_value : {});
+      mergeDeep(batch_items, written_value);
     }
   );
 
