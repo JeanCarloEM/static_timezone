@@ -628,7 +628,7 @@ export const acceptable_continents = (() => {
 
   for (let i = 0; i < all_tz_continents.length; i++) {
     if (remove.indexOf(all_tz_continents[i].toLowerCase()) < 0) {
-      n.push();
+      n.push(all_tz_continents[i]);
     }
   }
 

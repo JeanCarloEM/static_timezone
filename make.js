@@ -4,9 +4,9 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { isAcceptableTZ, triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
-import { all_tz_continents, TZs } from "./.maker/TZs.js"
+import { acceptable_continents, TZs } from "./.maker/TZs.js"
 
 import {
   adress_isocean
@@ -264,6 +264,11 @@ function main() {
 
   listOptions();
 
+  console.log("Acceptable continentes: ", acceptable_continents, "\n");
+
+  console.log(`Test isAcceptableTZ (=true): ${isAcceptableTZ('America/Sao_Paulo')}`);
+  console.log(`Test isAcceptableTZ (=false): ${isAcceptableTZ('Etc/GMT')}\n`);
+
   console.log(`Estimated disk occupancy for cluster=512b: ` + localNumberFormat((((options.qtd_all * 512) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=1K..: ` + localNumberFormat((((options.qtd_all * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
   console.log(`Estimated disk occupancy for cluster=2K..: ` + localNumberFormat((((options.qtd_all * 2 * 1024) / (1024 * 1024 * 1024))), 2) + "Gb");
@@ -285,7 +290,7 @@ function main() {
     , p_percent: "000.00".length
     , p_total: localNumberFormat(options.qtd_longitudes).length
     , p_completed: localNumberFormat(options.qtd_longitudes).length
-    , pbuilts: 3
+    , pbuilts: "000,0000".length
   };
 
   var builts_skippeds_status = (Array(options.qtd_process)).fill([0, 0]);
@@ -408,10 +413,13 @@ function main() {
                       return "???";
                     }
 
+                    if ("pbuilts" == key) {
+                      ctts[key] = localNumberFormat(ctts[key], 4);
+                    }
+
                     if (["p_total", "total", "p_completed", "completed", "builts", "skippeds"].indexOf(key) >= 0) {
                       ctts[key] = localNumberFormat(ctts[key]);
                     }
-
 
                     return ctts[key];
                   })() + "")

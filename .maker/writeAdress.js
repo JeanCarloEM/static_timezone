@@ -8,7 +8,7 @@ import {
   isAcceptableTZ,
   writedata
 } from "./commom.js";
-import { forceInclude } from "./forceInclude.js"
+import { forceInclude as force_list } from "./forceInclude.js"
 import { forceIgnore as ignore_list } from "./forceIgnore.js"
 
 export const default_extension = ".txt";
@@ -114,12 +114,16 @@ export function writeAdress(
   const full_path = `${options.destPath}/lat/${lat_int}/${lat_dec}/long/${lg_int}/${lg_dec}`;
 
   let defVal = (
-    isOcean(latitude, longitude)
-      ? adress_isocean
+    checkIsIncludeInList(latitude, longitude, force_list)
+      ? false
       : (
-        checkIsIncludeInList(latitude, longitude, ignore_list)
-          ? adress_isforced_ignore
-          : false
+        isOcean(latitude, longitude)
+          ? adress_isocean
+          : (
+            checkIsIncludeInList(latitude, longitude, ignore_list)
+              ? adress_isforced_ignore
+              : false
+          )
       )
   );
 
@@ -151,7 +155,6 @@ export function writeAdress(
       if (!isAcceptableTZ(calczone)) {
         return adress_unacceptable_tz;
       }
-      console.log("\n\n", "-SUCESSO-------------", "\n");
 
       return (
         presaved

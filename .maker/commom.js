@@ -133,7 +133,7 @@ export function localNumberFormat(x, digits, langOrPad, padOrland) {
           : (
             check(langOrPad)
               ? langOrPad
-              : false
+              : [5, "-"]
           )
       );
     })(
@@ -143,7 +143,7 @@ export function localNumberFormat(x, digits, langOrPad, padOrland) {
           Array.isArray(y) &&
           (y.length === 2) &&
           (typeof y[0] === 'number') && isFinite(y[0]) &&
-          (typeof y[1] === 'string') && (y[1].trim().length > 0)
+          (typeof y[1] === 'string') && (y[1].length > 0)
         );
       }
     )
@@ -160,7 +160,7 @@ export function localNumberFormat(x, digits, langOrPad, padOrland) {
   );
 
   if (padstr) {
-    return x.padstr(padstr[0], padstr[1]);
+    return `${x}`.padStart(padstr[0], padstr[1]);
   }
 
   return x;
@@ -431,7 +431,7 @@ export function isAcceptableTZ(tz) {
     mt &&
     Array.isArray(mt) &&
     (mt.length >= 2) &&
-    (new RegExp(`"${mt[1]}\/`, 'i')).test(ac)
+    (new RegExp(`"${mt[1]}"`, 'i')).test(ac)
   );
 };
 

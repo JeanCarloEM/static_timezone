@@ -6,5 +6,5 @@ process.json
 temp.json
 node_modules
 make.bat
-db/
+db*/
 .process
