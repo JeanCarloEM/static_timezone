@@ -4,7 +4,7 @@ import { writeBatch } from "./writeBatch.js"
 export function makeLat(
   options,
   lt,
-  lt_dec,
+  lat_start_dec,
   first_restored_long_start,
   process_path,
   fail,
@@ -13,7 +13,7 @@ export function makeLat(
   id
 ) {
   checkParameters(
-    (pid, msg, funcName, code, data) => {
+    (p_id, msg, funcName, code, data) => {
       fail(options.id, msg, funcName, code, data);
     },
     'makeLat',
@@ -30,7 +30,7 @@ export function makeLat(
     [
       "object",
       "number",
-      "number",
+      ["number", "boolean"],
       ["boolean", "number"],
       "string",
       "function",
@@ -40,7 +40,7 @@ export function makeLat(
     [
       options,
       lt,
-      lt_dec,
+      lat_start_dec,
       first_restored_long_start,
       process_path,
       fail,
@@ -65,13 +65,13 @@ export function makeLat(
     }
   }
 
-  id === 2 && process.log(
+  false && process.log(
     "###",
     "makeLat",
     0,
     {
       lt,
-      lt_dec,
+      lt_dec: lat_start_dec,
       first_restored_long_start,
     });
 
@@ -82,17 +82,18 @@ export function makeLat(
     options.lat_min,
     options.lat_max,
     (_latitude, decimal) => {
-      id === 0 && process.warn(
-        "+++",
+      const is_lat_zero = _latitude % 1 === 0;
+      false && process.warn(
+        "+++++",
         "makeLat",
         1,
         {
           _latitude,
           decimal,
-          is_zero: _latitude % 1 === 0,
+          is_lat_zero
         });
 
-      if (_latitude % 1 === 0) return;
+      if (is_lat_zero) return;
       const latitude = _latitude;
       const lat_dec = `${Math.round((Math.abs(latitude) % 1) * options.decimal_lt_size)}`.padStart(options.precision_lt, '0');
 
@@ -109,11 +110,12 @@ export function makeLat(
         lg < options.long_max;
         lg++
       ) {
-        id === 2 && process.log("\n\t\t\t\t++", id, "each lg",
-          `_latitude: ${_latitude}`,
-          `decimal: ${decimal}`,
-          `lg: ${lg}`,
-          "\n");
+        false && process.log("&&&", "makeLat", 1,
+          {
+            _latitude,
+            decimal,
+            lg,
+          });
 
         first_restored_long_start = false;
         let written_or_deleted_count = [0, 0];
@@ -146,12 +148,23 @@ export function makeLat(
 
         writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0), true);
         update_saved_options(`${latitude} `, lg, written_or_deleted_count);
+
+        false && process.warn(
+          "!!!!!",
+          "makeLat",
+          1,
+          {
+            lat_start_dec,
+            lat_dec,
+            latitude,
+            saved_process_path_tmp
+          });
       }
 
       writedata(saved_process_path_finished, JSON.stringify(lt_items, null, 0), true);
       delfile(saved_process_path_tmp);
     },
-    lt_dec,
+    lat_start_dec,
     id
   );
 }

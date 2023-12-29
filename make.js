@@ -132,9 +132,8 @@ process.on('message', (msg) => {
     * @param {*} funcName
     * @param {*} code
     */
-    (idp, _msg, funcName, code, data) => {
-      triggerError(
-        msg.start,
+    (id_p, _msg, funcName, code, data) => {
+      process.error(
         _msg,
         funcName,
         code,

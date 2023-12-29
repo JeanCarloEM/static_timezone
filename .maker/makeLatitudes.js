@@ -53,8 +53,8 @@ export function makeLatitudes(
   let last_generated_latitude = PROCESS.first_process_lat;
   let last_generated_longitude = options.long_min;
   let builts_skippeds_status = [PROCESS.data.builts_skippeds[0], PROCESS.data.builts_skippeds[1]];
-  id === 0 && process.log(
-    ":::",
+  false && process.log(
+    "start lt",
     "makeLatitudes",
     0,
     {
@@ -62,20 +62,31 @@ export function makeLatitudes(
       start_lat: PROCESS.start_lat,
     });
 
-  for (var lt = Math.round(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
-    id === 0 && process.error(
-      ":::",
+  for (var lt = parseInt(PROCESS.start_lat); lt < options.lat_max; lt += options.qtd_process) {
+    const start_lt_dec = (
+      PROCESS.continue && first_retored_runtime
+        ? Math.abs(fixDecimal(
+          (PROCESS.start_lat % 1) * options.decimal_lt_size
+          , options.precision_lt
+        ))
+        : false
+    );
+
+    false && process.log(
+      "for lt",
       "makeLatitudes",
       1,
       {
         first_process_lat: PROCESS.first_process_lat,
-        lt
+        lt,
+        start_lt_dec
       }
     );
+
     makeLat(
       options,
       lt,
-      fixDecimal(first_retored_runtime ? (PROCESS.start_lat % 1) * options.precision_lt : options.decimal_lt_size, options.precision_lt),
+      start_lt_dec,
       first_retored_runtime ? PROCESS.start_long : options.long_min,
       PROCESS.process_path,
       fail,

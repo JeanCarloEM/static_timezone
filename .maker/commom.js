@@ -90,8 +90,9 @@ export function readSavedProcessingPos(options, id, fail, fpath) {
     return ((typeof fail === 'function') ? fail : triggerError)(id, 'Saved options != actual options.', 'readSavedProcessingPos', 0);
   }
 
-  const first_process_lat = options.lat_min + id;
-  const start_lat = saved.latitude === -1000 ? first_process_lat : saved.latitude;
+  const is_start = saved.latitude === -1000;
+  const first_process_lat = options.lat_min + (is_start ? id : 0);
+  const start_lat = is_start ? first_process_lat : saved.latitude;
   const start_long = saved.longitude_int_part === -1000 ? options.long_min : parseInt(saved.longitude_int_part);
 
   return {
@@ -100,7 +101,8 @@ export function readSavedProcessingPos(options, id, fail, fpath) {
     data: saved,
     first_process_lat,
     start_lat,
-    start_long
+    start_long,
+    continue: !is_start ? 1 : 0
   };
 }
 
@@ -295,23 +297,29 @@ export function loopDecimalPart(
   min,
   max,
   clback,
-  start_at,
-  id
+  start_at
 ) {
-  const digits = Math.sqrt(decimal_size);
+  const digits = Math.round(Math.log(decimal_size) / (Math.log(2) + Math.log(5)));
   intpart = parseInt(intpart);
 
   const initial = parseFloat(
-    (
+    fixDecimal(
       (
-        (() => {
-          let pre = Math.round(Math.abs(typeof start_at === "number" ? start_at : (decimal_size - multiply)))
-          pre = pre < 0 ? pre * decimal_size : pre;
-          return (pre == decimal_size) ? pre - multiply : pre;
-        })()
-      )
-      / decimal_size
-    ).toFixed(digits) + ""
+        (
+          (() => {
+            let pre = Math.round(
+              Math.abs(
+                typeof start_at === "number"
+                  ? start_at
+                  : (decimal_size - multiply)
+              )
+            );
+            pre = (pre > 0 && pre < 1) ? pre * decimal_size : pre;
+            return (pre == decimal_size) ? pre - multiply : pre;
+          })()
+        )
+        / decimal_size
+      ), digits) + ""
   );
 
   multiply = parseFloat(Math.abs(multiply / decimal_size).toFixed(digits) + "");
@@ -328,15 +336,15 @@ export function loopDecimalPart(
   });
 
   for (
-    var decimal = initial;
+    let decimal = initial;
     decimal >= 0;
-    decimal = parseFloat((decimal - multiply).toFixed(digits))
+    decimal = fixDecimal((decimal - multiply), digits)
   ) {
     (`${decimal}`.length > (digits) + 2) && process.error("decimal length > precision", 'loopDecimalPart', 0, { decimal, multiply });
 
     const item = (intpart >= 0 ? 1. : - 1.) * (Math.abs(intpart) + decimal);
 
-    false && process.log("---()", 'loopDecimalPart', 0, { decimal, multiply, item });
+    false && process.log("---()", 'loopDecimalPart', 0, { decimal, multiply, item, test: ((item < min) || (item > max)) });
 
     if ((item < min) || (item > max)) {
       continue;
