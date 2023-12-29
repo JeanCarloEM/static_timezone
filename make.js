@@ -32,8 +32,8 @@ const ___pre_ = {
   , qtd_process: getCMDParam('t', 'threads', Math.ceil(os.cpus().length))
   , inc_multiply: getCMDParam('m', 'multiply', 1)
 
-  , lat_min: -58
-  , lat_max: 84
+  , lat_min: -59
+  , lat_max: 85
   , long_min: -180
   , long_max: 180
 };

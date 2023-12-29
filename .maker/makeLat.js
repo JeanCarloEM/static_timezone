@@ -61,7 +61,7 @@ export function makeLat(
           )
       );
     } catch (e) {
-      fail(null, "Fail to load saved data", "makeLat", 0, e);
+      return {};
     }
   }
 
@@ -99,7 +99,9 @@ export function makeLat(
 
       const saved_process_path_tmp = `${process_path}/${parseInt(lt)}.${lat_dec}.tmp.data.json`;
       const saved_process_path_finished = `${options.destPath}/${parseInt(lt)}/store/${lat_dec}.data.json`;
+
       let lt_items = read_save_items(saved_process_path_finished, saved_process_path_tmp);
+      let old_saved_json = JSON.stringify(lt_items, null, 0);
 
       for (
         var lg = (
@@ -146,8 +148,13 @@ export function makeLat(
           )
         );
 
-        writedata(saved_process_path_tmp, JSON.stringify(lt_items, null, 0), true);
-        update_saved_options(`${latitude} `, lg, written_or_deleted_count);
+        const n_old_saved_json = JSON.stringify(lt_items, null, 0);
+
+        if (n_old_saved_json != old_saved_json) {
+          old_saved_json = n_old_saved_json;
+          writedata(saved_process_path_tmp, old_saved_json, true);
+          update_saved_options(`${latitude} `, lg, written_or_deleted_count);
+        }
 
         false && process.warn(
           "!!!!!",
