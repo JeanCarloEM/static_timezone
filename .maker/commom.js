@@ -133,7 +133,7 @@ export function localNumberFormat(x, digits, langOrPad, padOrland) {
           : (
             check(langOrPad)
               ? langOrPad
-              : [5, "-"]
+              : false
           )
       );
     })(
