@@ -5,4 +5,5 @@
 !.gitignore
 !.gitignore*
 !db*/
+!db2/
 db/
