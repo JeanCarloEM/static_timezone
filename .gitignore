@@ -3,8 +3,8 @@
 *.temp.json
 tmp.json
 process.json
+.process
 temp.json
 node_modules
 make.bat
 db*/
-.process
