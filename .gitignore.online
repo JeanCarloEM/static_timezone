@@ -1,8 +1,0 @@
-*
-!README.md
-!LICENSE
-!*.html
-!.gitignore
-!.gitignore*
-!db*/
-db/
