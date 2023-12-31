@@ -1,0 +1,11 @@
+*.tmp.json
+*.process.json
+*.temp.json
+tmp.json
+process.json
+.process
+temp.json
+node_modules
+*.bat
+db*/
+*.html
