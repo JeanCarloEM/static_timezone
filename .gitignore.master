@@ -1,3 +1,4 @@
+./
 *.tmp.json
 *.process.json
 *.temp.json
