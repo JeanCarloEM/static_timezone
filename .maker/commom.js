@@ -4,6 +4,7 @@ import { find } from 'geo-tz';
 import PATH from "path"
 import { acceptable_continents, TZs } from "./TZs.js"
 import colors from 'ansi-colors';
+import { exec } from 'child_process';
 
 const _argv = minimist(process.argv.slice(2));
 
@@ -361,6 +362,19 @@ export function dirname(x) {
   return PATH.dirname(x);
 }
 
+
+export function cmd(command, cb) {
+  return exec(command, function (err, stdout, stderr) {
+    if (err != null) {
+      return cb(new Error(err), null);
+    } else if (typeof (stderr) != "string") {
+      return cb(new Error(stderr), null);
+    } else {
+      return cb(null, stdout);
+    }
+  });
+}
+
 /**
  *
  * @param {*} fpath
@@ -380,6 +394,10 @@ export function writedata(fpath, ctt, ignoreEmpty) {
   const dir = PATH.dirname(fpath);
   !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(`${fpath}`, ctt, 'ascii');
+
+  cmd(`git add "${fpath}"`, (e, r) => {
+
+  });
 }
 
 export function delfile(fpath) {
