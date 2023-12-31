@@ -1,4 +1,8 @@
 *
+!README.md
+!LICENSE
 !*.html
-!*.txt
-!*.json
+!.gitignore
+!.gitignore*
+!db*/
+db/

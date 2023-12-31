@@ -27,3 +27,4 @@ It is estimated that there are more than **577,800,000** files, which despite no
 - **Brazilian in Brazil**: latitude -15.831315* and longitude \*-47.881165\* => `*/from/gcs/2-digit/lat/-15/83/long/-47/88`
 - **New York in USA**: latitude _40.657462_ and longitude _-74.014893_ => `/from/gcs/2-digit/lat/40/65/long/-74/01`
 - **Sydiney in Australia**: latitude _-33.898917_ and longitude _151.303711_ => `/from/gcs/2-digit/lat/-33/89/long/151/30`
+
