@@ -43,7 +43,7 @@ function makeAdressFile(options, path, tz, fail) {
       writedata(`${path}${default_extension}`, `${tz}`);
     }
   } catch (e) {
-    return typeof fail === 'function' && fail(e, "writeAdress", 1);
+    return typeof fail === 'function' && fail(e.message, "writeAdress", 1, e);
   }
 }
 

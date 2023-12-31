@@ -98,7 +98,7 @@ export function makeLat(
       const lat_dec = `${Math.round((Math.abs(latitude) % 1) * options.decimal_lt_size)}`.padStart(options.precision_lt, '0');
 
       const saved_process_path_tmp = `${process_path}/${parseInt(lt)}.${lat_dec}.tmp.data.json`;
-      const saved_process_path_finished = `${options.destPath}/${parseInt(lt)}/store/${lat_dec}.data.json`;
+      const saved_process_path_finished = `${options.destPath}/store/${parseInt(lt)}/${lat_dec}.data.json`;
 
       let lt_items = read_save_items(saved_process_path_finished, saved_process_path_tmp);
       let old_saved_json = JSON.stringify(lt_items, null, 0);

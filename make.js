@@ -290,7 +290,7 @@ function main() {
     , p_percent: "000.00".length
     , p_total: localNumberFormat(options.qtd_longitudes).length
     , p_completed: localNumberFormat(options.qtd_longitudes).length
-    , pbuilts: "000,0000".length
+    , pbuilts: "000,00".length
   };
 
   var builts_skippeds_status = (Array(options.qtd_process)).fill([0, 0]);
@@ -414,7 +414,7 @@ function main() {
                     }
 
                     if ("pbuilts" == key) {
-                      ctts[key] = localNumberFormat(ctts[key], 4);
+                      ctts[key] = localNumberFormat(ctts[key], 2);
                     }
 
                     if (["p_total", "total", "p_completed", "completed", "builts", "skippeds"].indexOf(key) >= 0) {
@@ -493,7 +493,7 @@ function main() {
         lat: values.latitude,
         long: values.longitude,
         builts: isMain ? values.builts : 0,
-        pbuilts: isMain ? values.builts / options.qtd_all * 100 : 0,
+        pbuilts: isMain ? values.builts / params.value * 100 : 0,
         elapsed: lapse,
         remaining: remaining,
         p_completed: isMain ? 0 : (params.value % options.qtd_longitudes),
@@ -501,7 +501,7 @@ function main() {
         completed: params.value,
         total: isMain ? options.qtd_all : options.qtd_by_process,
         status: (
-          (typeof values.lgv === "object")
+          (typeof values.lgv === "string" && values.lgv.length > 0)
             ? colors.bgGreenBright(colors.black(" OK "))
             : (
               ((typeof values.lgv === "number") && (isFinite(values.lgv)))
@@ -511,15 +511,30 @@ function main() {
                     , adress_isforced_ignore
                     , adress_isinvalid_tz
                     , adress_unacceptable_tz
-                    , adress_skipped
                    */
                   (
                     values.lgv === adress_unchanged
-                      ? colors.bgCyan(" UNCHANGED ")
-                      : colors.bgBlue(" IGNORED ")
+                      ? colors.bgGreen(colors.white(" UN-CHANGED "))
+                      : (
+                        values.lgv === adress_isinvalid_tz
+                          ? colors.bgRed(colors.white(" INVALID-TZ "))
+                          : (
+                            values.lgv === adress_isocean
+                              ? colors.bgCyan(" OCEAN ")
+                              : (
+                                values.lgv === adress_isforced_ignore
+                                  ? colors.bgBlue(" SKIPPED ")
+                                  : (
+                                    values.lgv === adress_unacceptable_tz
+                                      ? colors.bgCyanBright(colors.black(" unacceptable ".toLocaleUpperCase()))
+                                      : colors.bgMagentaBright(" UNKNOW[2] (" + values.lgv + ")")
+                                  )
+                              )
+                          )
+                      )
                   )
                 )
-                : colors.bgMagentaBright(" UNKNOW-STATUS ")
+                : colors.bgMagentaBright(" UNKNOW (" + values.lgv + ")")
             )
         )
       });
