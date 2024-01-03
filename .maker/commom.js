@@ -5,8 +5,57 @@ import PATH from "path"
 import { acceptable_continents, TZs } from "./TZs.js"
 import colors from 'ansi-colors';
 import { exec } from 'child_process';
+import JSZip from 'jszip';
 
 const _argv = minimist(process.argv.slice(2));
+let zip_file = false;
+
+/**
+ *
+ * @param {*} options
+ * @param {*} maxtime
+ * @param {*} listFileZip
+ */
+export async function writeMainZip(options, maxtime, listFileZip) {
+  return new Promise((R, _r) => {
+    const startedTime = Date.now();
+
+    return ((continuar) => {
+      if (!zip_file && fexists(options.zip_path)) {
+        fs.readFile(options.zip_path, function (err, data) {
+          if (err) throw err;
+          zip_file = new JSZip();
+          zip_file.loadAsync(data, {
+            checkCRC32: true,
+            createFolders: true
+          }).then(function (zip) {
+            continuar();
+          });
+        })
+      }
+      zip_file = zip_file ? zip_file : new JSZip();
+      continuar();
+    })(() => {
+      let runtime = Date.now() - startedTime;
+      while ((listFileZip.length > 0) && ((maxtime === true) || (runtime < maxtime))) {
+        const v = listFileZip.shift();
+        zip_file.file(v[0], v[1]);
+        runtime = Date.now() - startedTime;
+      }
+
+      !fs.existsSync(dirname(options.zip_path)) && fs.mkdirSync(options.zip_path, { recursive: true });
+
+      zip_file
+        .generateNodeStream({
+          type: 'nodebuffer',
+          streamFiles: true
+        })
+        .pipe(fs.createWriteStream(options.zip_path));
+
+      R(listFileZip);
+    });
+  });
+}
 
 export function LOG(...args) {
   console.log(...args);
@@ -364,7 +413,7 @@ export function dirname(x) {
 
 
 export function cmd(command, cb) {
-  return exec(command, function (err, stdout, stderr) {
+  return exec(command, (err, stdout, stderr)=> {
     if (err != null) {
       return cb(new Error(err), null);
     } else if (typeof (stderr) != "string") {
@@ -391,13 +440,29 @@ export function writedata(fpath, ctt, ignoreEmpty) {
     return;
   }
 
-  const dir = PATH.dirname(fpath);
+  const is_process = (/\.process\//i.test(fpath));
+  const is_json = (/\.json\s*$/i.test(fpath));
+  const is_large_ctt = ctt.length > 64;
+
+  const dir = dirname(fpath);
   !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(`${fpath}`, ctt, 'ascii');
 
-  cmd(`git add "${fpath}"`, (e, r) => {
+  /*
 
-  });
+  if (is_process) {
+
+  } else if (!is_json && !is_large_ctt) {
+    if (process.send) {
+      process.send({
+        file: fpath,
+        content: ctt
+      });
+    }
+  }
+  */
+
+  cmd(`git add "${fpath}"`, (e, r) => { });
 }
 
 export function delfile(fpath) {

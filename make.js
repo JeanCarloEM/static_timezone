@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { isAcceptableTZ, triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { cmd, writeMainZip, isAcceptableTZ, triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { acceptable_continents, TZs } from "./.maker/TZs.js"
 
@@ -25,7 +25,7 @@ const ___pre_ = {
   , precision: getCMDParam('p', 'precision', 2)
   , update_count: getCMDParam('u', 'update', 100)
   , isFreezeSeconds: getCMDParam('u', 'update', 15)
-  , root: getCMDParam('r', 'root', 'from').trim().replace(/["']/g, "").trim()
+  , root: getCMDParam('r', 'root', 'db').trim().replace(/["']/g, "").trim()
 
   , save_json: getCMDParam('j', 'save-json', false)
   , save_raw: getCMDParam('s', 'save-raw', true)
@@ -40,6 +40,7 @@ const ___pre_ = {
 
 const ___pre_2 = mergeDeep({
   decimal_lt_size: Math.pow(10, ___pre_.precision)
+  , zip_path: `${___pre_.root}/main.zip`
   , decimal_lg_size: Math.pow(10, ___pre_.precision)
   , lat_range: (___pre_.lat_max - ___pre_.lat_min)
   , long_range: (___pre_.long_max - ___pre_.long_min)
@@ -254,7 +255,8 @@ function listOptions() {
 /**
  *
  */
-function main() {
+async function main() {
+  let listFileZip = [];
   const PROCESS = readSavedProcessingPos(options, 0, null, `main`);
   writedata(PROCESS.saved_process_path, JSON.stringify(PROCESS.data));
 
@@ -557,8 +559,12 @@ function main() {
     })())
       .on('message', (msg) => {
         if (has(msg, "error")) {
-          "Child '", k, "' exited with data:" + msg.error;
-          return terminate();
+          throw new Error(msg.error);
+        }
+
+        if (has(msg, "file") && has(msg, "content")) {
+          listFileZip.push([msg.file, msg.content]);
+          return;
         }
 
         if (isFrezeeSeconds_bars[k] === true) {
@@ -608,7 +614,7 @@ function main() {
   /**
    * UPDATE GLOBAL PROGRESS BART
    */
-  intervalo = setInterval(() => {
+  intervalo = setInterval(async () => {
     isFrezeeSeconds_bars[isFrezeeSeconds_bars.length - 1] = 0;
     let builts = 0;
 
@@ -644,6 +650,9 @@ function main() {
       return;
     }
 
+    await writeMainZip(options, (tot >= options.qtd_all) ? true : 250, listFileZip)
+      .then(r => listFileZip);
+
     bar_total.update(
       tot, {
       id: -1,
@@ -657,12 +666,14 @@ function main() {
       clearInterval(intervalo);
       return;
     }
-  }, 1000);
+
+  }, 500);
 }
 
 /**
  *
  */
 if (getCMDParam('start')) {
-  main();
+  //main();
+  cmd("dir", () => { });
 }
