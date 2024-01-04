@@ -4,7 +4,7 @@ import * as cliProgress from 'cli-progress';
 import * as os from 'os';
 import { fork } from 'child_process';
 import colors from 'ansi-colors';
-import { cmd, writeMainZip, isAcceptableTZ, triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
+import { cmd, gitAdd, writeMainZip, isAcceptableTZ, triggerMessage, readSavedProcessingPos, triggerError, localNumberFormat, minlength, maxlength, fexists, fread, writedata, getCMDParam, has, mergeDeep } from './.maker/commom.js';
 import { makeLatitudes } from "./.maker/makeLatitudes.js"
 import { acceptable_continents, TZs } from "./.maker/TZs.js"
 
@@ -257,6 +257,7 @@ function listOptions() {
  */
 async function main() {
   let listFileZip = [];
+  let listFileZip_runing = false;
   const PROCESS = readSavedProcessingPos(options, 0, null, `main`);
   writedata(PROCESS.saved_process_path, JSON.stringify(PROCESS.data));
 
@@ -562,8 +563,8 @@ async function main() {
           throw new Error(msg.error);
         }
 
-        if (has(msg, "file") && has(msg, "content")) {
-          listFileZip.push([msg.file, msg.content]);
+        if (has(msg, "file")) {
+          gitAdd(msg.file);
           return;
         }
 
@@ -650,8 +651,11 @@ async function main() {
       return;
     }
 
-    await writeMainZip(options, (tot >= options.qtd_all) ? true : 250, listFileZip)
-      .then(r => listFileZip);
+    if (tot >= options.qtd_all) {
+      gitAdd();
+    }
+
+    //await writeMainZip(options, (tot >= options.qtd_all) ? true : 250, listFileZip).then(r => listFileZip);
 
     bar_total.update(
       tot, {
@@ -674,6 +678,5 @@ async function main() {
  *
  */
 if (getCMDParam('start')) {
-  //main();
-  cmd("dir", () => { });
+  main();
 }

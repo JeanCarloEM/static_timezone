@@ -4,11 +4,68 @@ import { find } from 'geo-tz';
 import PATH from "path"
 import { acceptable_continents, TZs } from "./TZs.js"
 import colors from 'ansi-colors';
-import { exec } from 'child_process';
+import { spawn, exec } from 'child_process';
 import JSZip from 'jszip';
 
 const _argv = minimist(process.argv.slice(2));
 let zip_file = false;
+
+let git_runing = false;
+let listGitAdd = [];
+let git_count = 0;
+
+export function git_is_running() {
+  return git_runing;
+}
+
+
+/**
+ *
+ * @param {*} options
+ * @param {*} maxtime
+ * @param {*} listFileZip
+ */
+export async function gitAdd(v) {
+  if (v && git_runing) {
+    listGitAdd.push(v);
+    return;
+  }
+
+  git_runing = true;
+
+  let fp = [...listGitAdd];
+  listGitAdd = [];
+
+  if (v) {
+    fp.push(v);
+  }
+
+  git_count += fp.length;
+
+  ((ok, _cmd) => {
+    function runme() {
+      _cmd(`git add ${fp.join(" ")}`, ok, runme);
+    }
+
+    runme();
+  })(
+    () => {
+      setTimeout(() => {
+        git_runing = false;
+      }, 50);
+    },
+    (command, ok, fail) => {
+      try {
+        cmd(command, () => {
+          ok();
+        });
+      } catch (e) {
+        setTimeout(fail, 50);
+      }
+    }
+  );
+
+}
 
 /**
  *
@@ -412,15 +469,15 @@ export function dirname(x) {
 }
 
 
-export function cmd(command, cb) {
-  return exec(command, (err, stdout, stderr)=> {
-    if (err != null) {
-      return cb(new Error(err), null);
-    } else if (typeof (stderr) != "string") {
-      return cb(new Error(stderr), null);
-    } else {
-      return cb(null, stdout);
+export function cmd(command, clback) {
+  const cmd = command.split(" ");
+  spawn(cmd.shift(), cmd, {
+    env: {
+      NODE_ENV: 'production',
+      PATH: process.env.PATH,
     }
+  }).on("close", code => {
+    clback();
   });
 }
 
@@ -441,28 +498,16 @@ export function writedata(fpath, ctt, ignoreEmpty) {
   }
 
   const is_process = (/\.process\//i.test(fpath));
-  const is_json = (/\.json\s*$/i.test(fpath));
-  const is_large_ctt = ctt.length > 64;
 
   const dir = dirname(fpath);
   !fs.existsSync(dir) && fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(`${fpath}`, ctt, 'ascii');
 
-  /*
-
-  if (is_process) {
-
-  } else if (!is_json && !is_large_ctt) {
-    if (process.send) {
-      process.send({
-        file: fpath,
-        content: ctt
-      });
-    }
+  if (!is_process && process.send) {
+    process.send({
+      file: fpath
+    });
   }
-  */
-
-  cmd(`git add "${fpath}"`, (e, r) => { });
 }
 
 export function delfile(fpath) {
